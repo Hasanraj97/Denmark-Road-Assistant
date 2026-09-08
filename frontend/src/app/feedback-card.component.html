@@ -1,0 +1,50 @@
+<section class="card feedback-card">
+  <h2>{{ title() }}</h2>
+
+  @if (!loggedIn()) {
+    <p class="feedback-note">
+      <a routerLink="/login">Log in</a> to save this analysis and leave feedback.
+    </p>
+  } @else {
+    <div class="feedback-actions">
+      <button
+        type="button"
+        class="feedback-choice"
+        [class.active]="selectedHelpful() === true"
+        (click)="choose(true)"
+      >
+        Yes, helpful
+      </button>
+      <button
+        type="button"
+        class="feedback-choice"
+        [class.active]="selectedHelpful() === false"
+        (click)="choose(false)"
+      >
+        No, not helpful
+      </button>
+    </div>
+
+    <label class="feedback-label" for="feedbackComment">Tell us why</label>
+    <textarea
+      id="feedbackComment"
+      rows="4"
+      maxlength="1000"
+      [ngModel]="comment()"
+      (ngModelChange)="comment.set($event)"
+      placeholder="Share what felt useful or what should improve."
+    ></textarea>
+
+    @if (errorMessage()) {
+      <p class="feedback-error">{{ errorMessage() }}</p>
+    }
+
+    @if (successMessage()) {
+      <p class="feedback-success">{{ successMessage() }}</p>
+    }
+
+    <button type="button" class="feedback-save" [disabled]="saving()" (click)="saveFeedback()">
+      {{ saving() ? 'Saving...' : existingFeedback() ? 'Update feedback' : 'Save feedback' }}
+    </button>
+  }
+</section>

@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start ML Service",
+      "type": "shell",
+      "command": "source venv/bin/activate && uvicorn app.main:app --port 8000 --reload",
+      "windows": {
+        "command": "if (Test-Path venv) { .\\venv\\Scripts\\Activate }; uvicorn app.main:app --port 8000 --reload"
+      },
+      "options": { "cwd": "${workspaceFolder}/ml-service" },
+      "presentation": { "panel": "dedicated" }
+    },
+    {
+      "label": "Start Backend",
+      "type": "shell",
+      "command": "./mvnw spring-boot:run",
+      "windows": {
+        "command": ".\\mvnw.cmd spring-boot:run"
+      },
+      "options": { "cwd": "${workspaceFolder}/backend" },
+      "presentation": { "panel": "dedicated" }
+    },
+    {
+      "label": "Start Frontend",
+      "type": "shell",
+      "command": "npm start",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "presentation": { "panel": "dedicated" }
+    },
+    {
+      "label": "Run Full Project",
+      "dependsOn": ["Start ML Service", "Start Backend", "Start Frontend"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    }
+  ]
+}

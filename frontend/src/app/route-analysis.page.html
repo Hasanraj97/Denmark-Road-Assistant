@@ -1,0 +1,249 @@
+<main class="shell">
+  <header class="page-header">
+    <div class="hero-intro">
+      <span class="hero-kicker">Synthetic Denmark travel advisory</span>
+      <h1>Denmark Road Assistant</h1>
+      <p class="page-subtitle">
+        Predict likely road conditions, travel risk, and whether you should
+        leave early.
+      </p>
+    </div>
+  </header>
+
+  @if (errorMessage()) {
+    <div class="error-banner">{{ errorMessage() }}</div>
+  }
+
+  <section class="dashboard-grid">
+    <div class="left-column">
+      <section class="card route-card">
+        <div class="route-card-head">
+          <div class="route-input-labels">
+            <span>Origin</span>
+          </div>
+          <div class="route-chip">
+            <span>Route:</span>
+            <strong>{{ routeLabel() }}</strong>
+            <span class="route-arrow">&#8594;</span>
+          </div>
+        </div>
+
+        <div class="route-input-stack">
+          <div class="route-field-stack">
+            <div style="position: relative; display: flex; flex-direction: column; gap: 12px; padding: 10px 0;">
+              <input
+                type="text"
+                [ngModel]="origin()"
+                (ngModelChange)="origin.set($event)"
+                placeholder="Roskilde"
+                style="width: 100%; height: 46px; padding: 0 16px; border-radius: 16px; border: 1px solid #ddd; background: #fff; z-index: 1; position: relative;"
+              />
+
+              <button
+                type="button"
+                (click)="swapRoute()"
+                aria-label="Swap origin and destination"
+                style="
+                  position: absolute;
+                  left: 50%;
+                  top: 50%;
+                  transform: translate(-50%, -50%);
+                  z-index: 9999;
+                  width: 40px;
+                  height: 40px;
+                  border-radius: 50%;
+                  border: 1px solid #ddd;
+                  background: white;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+                  cursor: pointer;
+                "
+              >
+                &#8646;
+              </button>
+
+              <input
+                type="text"
+                [ngModel]="destination()"
+                (ngModelChange)="destination.set($event)"
+                placeholder="Copenhagen"
+                style="width: 100%; height: 46px; padding: 0 16px; border-radius: 16px; border: 1px solid #ddd; background: #fff; z-index: 1; position: relative;"
+              />
+            </div>
+
+            <div class="time-field">
+              <label for="departureTime">Departure time</label>
+              <input
+                id="departureTime"
+                type="time"
+                [ngModel]="selectedDepartureTime()"
+                (ngModelChange)="selectedDepartureTime.set($event)"
+                name="departureTime"
+                step="900"
+              />
+            </div>
+
+            <div class="location-actions">
+              <button
+                type="button"
+                class="location-button"
+                [disabled]="locating()"
+                (click)="useMyLocation()"
+              >
+                {{ locating() ? 'Getting location...' : 'Use My Location' }}
+              </button>
+              <p class="location-help">
+                Browser and Android app use the device Geolocation API. In the Android emulator, set GPS manually from
+                Extended Controls to Location.
+              </p>
+              @if (locationMessage()) {
+                <p class="location-success">{{ locationMessage() }}</p>
+              }
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="analyze-button" [disabled]="!canAnalyze()" (click)="analyzeRoute()">
+          {{ analyzing() ? 'Analyzing Route...' : 'Analyze Route' }}
+        </button>
+      </section>
+
+      <section class="card map-card">
+        <div class="map-frame">
+          <div #mapContainer class="map-canvas"></div>
+
+          @if (analysis(); as result) {
+            <div class="map-overlay">
+              <span>Route:</span>
+              <strong>{{ result.route.distanceKm }} km</strong>
+            </div>
+          }
+        </div>
+
+        <div class="map-footer-grid desktop-map-footer">
+          <article class="mini-card">
+            <h2>What Shaped This Advisory</h2>
+            <p class="mini-card-intro">A simpler view of the route factors the prediction relied on most.</p>
+
+            @if (analysis(); as result) {
+              <div class="inputs-list compact-inputs-list">
+                @for (feature of predictionInputs(); track feature.label) {
+                  <div class="input-item">
+                    <span>{{ feature.label }}</span>
+                    <strong>{{ feature.value }}</strong>
+                    <small>{{ feature.help }}</small>
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="empty-text">Key route factors will appear here after the model analyzes your trip.</p>
+            }
+          </article>
+        </div>
+      </section>
+    </div>
+
+    <aside class="right-column">
+      <section class="card overview-card">
+        <h2>Route Overview</h2>
+
+        @if (analysis(); as result) {
+          <div class="overview-grid">
+            <div>
+              <span>Origin</span>
+              <strong>{{ result.route.originLabel.split(',')[0] }}</strong>
+            </div>
+            <div>
+              <span>Destination</span>
+              <strong>{{ result.route.destinationLabel.split(',')[0] }}</strong>
+            </div>
+            <div>
+              <span>Departure time</span>
+              <strong>{{ formatSelectedTime(selectedDepartureTime()) }}</strong>
+            </div>
+            <div>
+              <span>Traffic window</span>
+              <strong>{{ formatTimeOfDayLabel(result.features.timeOfDay) }}</strong>
+            </div>
+            <div>
+              <span>Distance</span>
+              <strong>{{ result.route.distanceKm }} km</strong>
+            </div>
+            <div>
+              <span>Approx</span>
+              <strong>{{ result.route.durationMinutes }} min</strong>
+            </div>
+          </div>
+        } @else {
+          <p class="empty-text">Analyze a route to see route details here.</p>
+        }
+      </section>
+
+      <app-weather-widget
+        [hours]="weatherHours()"
+        [loading]="weatherLoading()"
+        [error]="weatherError()"
+      />
+
+      <section class="card advisory-card">
+        <div class="advisory-top">
+          <h2>Travel Advisory</h2>
+
+          @if (analysis(); as result) {
+            <div class="confidence-chip">
+              &#8593; {{ confidencePercent(result.prediction.confidence) }}%
+            </div>
+          }
+        </div>
+
+        @if (analysis(); as result) {
+          <div class="advisory-meta">
+            <span class="condition-pill" [ngClass]="conditionClass(result.prediction.roadConditionLabel)">
+              {{ result.prediction.roadConditionLabel }}
+            </span>
+            <span class="confidence-pill">Confidence</span>
+          </div>
+
+          <h3>
+            @if (result.prediction.leaveEarlyMinutes > 0) {
+              Leave around {{ result.prediction.leaveEarlyMinutes }} minutes early
+            } @else {
+              No need to leave early right now
+            }
+          </h3>
+
+          <p class="advisory-copy">{{ result.prediction.advisory }}</p>
+
+          <div class="advisory-tags">
+            @for (tag of advisoryTags(); track tag) {
+              <span>{{ tag }}</span>
+            }
+          </div>
+        } @else {
+          <p class="empty-text">
+            Run a route analysis to get the assistant-style travel advisory.
+          </p>
+        }
+      </section>
+
+      @if (analysis(); as result) {
+        @if (isLoggedIn() && result.historyId) {
+          <app-feedback-card
+            [loggedIn]="true"
+            [historyId]="result.historyId"
+            [existingFeedback]="latestFeedback()"
+            title="Was this advisory helpful?"
+            (saved)="latestFeedback.set($event)"
+          />
+        } @else if (!isLoggedIn()) {
+          <section class="card auth-note-card">
+            <h2>Save this result</h2>
+            <p>Log in to save this analysis to your history and give feedback on the advisory.</p>
+          </section>
+        }
+      }
+    </aside>
+  </section>
+</main>

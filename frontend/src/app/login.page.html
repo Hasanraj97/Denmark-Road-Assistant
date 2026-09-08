@@ -1,0 +1,38 @@
+<section class="auth-view">
+  <div class="auth-card">
+    <span class="auth-kicker">Secure access</span>
+    <h1>Welcome back</h1>
+    <p>Log in to save your route profile and manage your Denmark Road Assistant account.</p>
+
+    @if (errorMessage()) {
+      <div class="auth-error">{{ errorMessage() }}</div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="login()" class="auth-form">
+      <label>
+        <span>Email</span>
+        <input type="email" formControlName="email" placeholder="ahmed@example.com" />
+        @if (showError('email')) {
+          <small class="field-error">Enter a valid email address.</small>
+        }
+      </label>
+
+      <label>
+        <span>Password</span>
+        <input type="password" formControlName="password" placeholder="password123" />
+        @if (showError('password')) {
+          <small class="field-error">Password must be at least 8 characters.</small>
+        }
+      </label>
+
+      <button type="submit" [disabled]="loading()">
+        {{ loading() ? 'Signing in...' : 'Login' }}
+      </button>
+    </form>
+
+    <p class="auth-alt">
+      Need an account?
+      <a routerLink="/signup">Create one here</a>
+    </p>
+  </div>
+</section>

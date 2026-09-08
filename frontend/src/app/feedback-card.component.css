@@ -1,0 +1,112 @@
+:host {
+  display: block;
+}
+
+.card {
+  padding: 22px;
+  border-radius: 28px;
+  border: 1px solid rgba(27, 65, 122, 0.12);
+  background: rgba(247, 251, 255, 0.9);
+  box-shadow: 0 24px 58px rgba(17, 42, 78, 0.14);
+  backdrop-filter: blur(18px);
+}
+
+.feedback-card {
+  display: grid;
+  gap: 14px;
+}
+
+.feedback-card h2 {
+  margin: 0;
+  color: #173768;
+  font-size: 1.05rem;
+}
+
+.feedback-note,
+.feedback-error,
+.feedback-success {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.feedback-note a {
+  color: #1f67c7;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.feedback-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.feedback-choice,
+.feedback-save {
+  min-height: 46px;
+  border-radius: 999px;
+  border: 1px solid rgba(28, 83, 150, 0.18);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.feedback-choice {
+  padding: 0 18px;
+  background: rgba(242, 247, 255, 0.9);
+  color: #244572;
+}
+
+.feedback-choice.active {
+  background: linear-gradient(135deg, #7ed6ff 0%, #5d9dff 100%);
+  color: #12325d;
+  box-shadow: 0 12px 24px rgba(72, 137, 221, 0.2);
+}
+
+.feedback-label {
+  font-weight: 700;
+  color: #31517d;
+}
+
+textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(28, 83, 150, 0.16);
+  background: rgba(255, 255, 255, 0.94);
+  color: #1b3357;
+  resize: vertical;
+  min-height: 110px;
+  font: inherit;
+}
+
+.feedback-save {
+  padding: 0 22px;
+  justify-self: start;
+  background: linear-gradient(135deg, #1f67c7 0%, #53a4ff 100%);
+  color: #f3f8ff;
+}
+
+.feedback-save:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.feedback-error {
+  color: #cc4037;
+}
+
+.feedback-success {
+  color: #0f7a58;
+}
+
+@media (max-width: 640px) {
+  .feedback-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .feedback-save {
+    width: 100%;
+    justify-self: stretch;
+  }
+}

@@ -1,0 +1,149 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  background:
+    linear-gradient(180deg, rgba(226, 237, 255, 0.68) 0%, rgba(245, 249, 255, 0.72) 100%),
+    url("/images/endless-country-road-stockcake.webp") center / cover no-repeat;
+}
+
+.profile-view {
+  min-height: 100dvh;
+  padding: 124px 20px 40px;
+}
+
+.profile-card {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  padding: 28px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(248, 251, 255, 0.9);
+  box-shadow: 0 22px 56px rgba(20, 48, 82, 0.16);
+  backdrop-filter: blur(16px);
+}
+
+.profile-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+
+.profile-kicker {
+  display: inline-flex;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #2b5d95;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.78rem;
+}
+
+h1 {
+  margin: 18px 0 10px;
+  color: #173765;
+  font-size: clamp(2.2rem, 6vw, 3rem);
+}
+
+p {
+  margin: 0;
+  color: #48627e;
+  line-height: 1.7;
+}
+
+.profile-badge {
+  min-width: 240px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(25, 50, 77, 0.08);
+}
+
+.profile-badge strong,
+.profile-badge span {
+  display: block;
+}
+
+.profile-badge strong {
+  color: #1f395a;
+}
+
+.profile-badge span {
+  margin-top: 6px;
+  color: #6b8098;
+}
+
+.profile-message {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 18px;
+}
+
+.profile-message.error {
+  background: rgba(255, 231, 221, 0.82);
+  color: #d34f45;
+}
+
+.profile-message.success {
+  background: rgba(225, 248, 232, 0.82);
+  color: #2f7b4d;
+}
+
+.profile-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.profile-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.profile-form span {
+  color: #547295;
+  font-weight: 700;
+}
+
+.profile-form input {
+  height: 50px;
+  padding: 0 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(25, 50, 77, 0.12);
+  background: rgba(255, 255, 255, 0.95);
+  color: #173765;
+}
+
+.profile-form button {
+  grid-column: 1 / -1;
+  height: 52px;
+  margin-top: 8px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2b7bd1 0%, #1f5eb0 100%);
+  color: white;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.profile-form button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.state-text {
+  color: #547295;
+}
+
+@media (max-width: 720px) {
+  .profile-head {
+    flex-direction: column;
+  }
+
+  .profile-form {
+    grid-template-columns: 1fr;
+  }
+}

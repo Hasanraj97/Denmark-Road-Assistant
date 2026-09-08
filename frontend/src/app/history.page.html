@@ -1,0 +1,129 @@
+<main class="history-shell">
+  <header class="history-header">
+    <span class="history-kicker">Saved route analysis history</span>
+    <h1>Your route memory</h1>
+    <p>Review earlier advisory results, inspect details, and update whether each advisory was helpful.</p>
+  </header>
+
+  @if (errorMessage()) {
+    <div class="error-banner">{{ errorMessage() }}</div>
+  }
+
+  <section class="history-grid">
+    <section class="card history-list-card">
+      <div class="list-head">
+        <h2>Previous analyses</h2>
+      </div>
+
+      @if (loading()) {
+        <p class="empty-state">Loading saved analyses...</p>
+      } @else if (historyItems().length === 0) {
+        <p class="empty-state">No saved analyses yet.</p>
+      } @else {
+        <div class="history-list">
+          @for (item of historyItems(); track item.id) {
+            <article class="history-item" [class.active]="selectedHistory()?.id === item.id">
+              <div class="history-copy">
+                <h3>{{ item.originLabel.split(',')[0] }} → {{ item.destinationLabel.split(',')[0] }}</h3>
+                <p>{{ item.createdAt | date: 'dd MMM yyyy, HH:mm' }}</p>
+                <div class="history-meta">
+                  <span>{{ item.distanceKm }} km</span>
+                  <span>{{ item.durationMinutes }} min</span>
+                  <span>{{ item.predictedCondition }}</span>
+                  <span>{{ confidencePercent(item.confidence) }}% confidence</span>
+                </div>
+                <p class="preview">{{ advisoryPreview(item.advisoryText) }}</p>
+              </div>
+
+              <div class="history-actions">
+                <button type="button" class="ghost-button" (click)="openDetails(item.id)">View details</button>
+                <span class="feedback-status" [class.done]="!!item.feedback">
+                  {{ item.feedback ? 'Review saved' : 'No review yet' }}
+                </span>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="card history-detail-card">
+      @if (detailLoading()) {
+        <p class="empty-state">Loading details...</p>
+      } @else if (selectedHistory(); as item) {
+        <div class="detail-head">
+          <div>
+            <span class="detail-kicker">History details</span>
+            <h2>{{ item.originLabel.split(',')[0] }} → {{ item.destinationLabel.split(',')[0] }}</h2>
+          </div>
+          <span class="condition-pill">{{ item.predictedCondition }}</span>
+        </div>
+
+        <div class="detail-grid">
+          <div>
+            <span>Saved on</span>
+            <strong>{{ item.createdAt | date: 'dd MMM yyyy, HH:mm' }}</strong>
+          </div>
+          <div>
+            <span>Departure time</span>
+            <strong>{{ item.selectedDepartureTime || 'Not set' }}</strong>
+          </div>
+          <div>
+            <span>Distance</span>
+            <strong>{{ item.distanceKm }} km</strong>
+          </div>
+          <div>
+            <span>Duration</span>
+            <strong>{{ item.durationMinutes }} min</strong>
+          </div>
+          <div>
+            <span>Leave early</span>
+            <strong>{{ item.leaveEarlyMinutes }} min</strong>
+          </div>
+          <div>
+            <span>Confidence</span>
+            <strong>{{ confidencePercent(item.confidence) }}%</strong>
+          </div>
+        </div>
+
+        <div class="signal-grid">
+          <div class="signal-box">
+            <span>Traffic level</span>
+            <strong>{{ item.trafficLevel }}</strong>
+          </div>
+          <div class="signal-box">
+            <span>Weather risk</span>
+            <strong>{{ item.weatherRisk }}</strong>
+          </div>
+          <div class="signal-box">
+            <span>Accident risk</span>
+            <strong>{{ item.accidentRisk }}</strong>
+          </div>
+          <div class="signal-box">
+            <span>Construction risk</span>
+            <strong>{{ item.constructionRisk }}</strong>
+          </div>
+          <div class="signal-box">
+            <span>Vehicle load</span>
+            <strong>{{ item.vehicleLoadFactor }}</strong>
+          </div>
+        </div>
+
+        <article class="advisory-panel">
+          <h3>Advisory summary</h3>
+          <p>{{ item.advisoryText }}</p>
+        </article>
+
+        <app-feedback-card
+          [loggedIn]="true"
+          [historyId]="item.id"
+          [existingFeedback]="item.feedback"
+          title="Review this advisory"
+          (saved)="onFeedbackSaved($event)"
+        />
+      } @else {
+        <p class="empty-state">Choose a saved analysis to view details and feedback.</p>
+      }
+    </section>
+  </section>
+</main>

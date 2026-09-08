@@ -1,0 +1,248 @@
+:host {
+  display: block;
+}
+
+.weather-card {
+  border: 1px solid rgba(25, 50, 77, 0.1);
+  border-radius: 24px;
+  padding: 18px;
+  background: rgba(248, 251, 255, 0.9);
+  box-shadow: 0 18px 36px rgba(25, 50, 77, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.weather-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.weather-eyebrow,
+.weather-note,
+.weather-source,
+.weather-fallback p,
+.weather-hour-rain,
+.weather-hour-wind {
+  color: #5a7088;
+}
+
+.weather-eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.weather-card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #17324f;
+}
+
+.weather-spotlight {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 16px;
+  padding: 18px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(230, 241, 255, 0.95) 0%, rgba(248, 251, 255, 0.92) 100%);
+  border: 1px solid rgba(42, 111, 190, 0.14);
+  box-shadow: 0 14px 28px rgba(42, 111, 190, 0.08);
+}
+
+.weather-spotlight-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.weather-spotlight-tag {
+  display: inline-flex;
+  width: fit-content;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #2d5f96;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.weather-spotlight h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #17324f;
+}
+
+.weather-spotlight p {
+  margin: 0;
+  color: #53697f;
+  font-size: 0.93rem;
+  line-height: 1.6;
+}
+
+.weather-spotlight-meta {
+  min-width: 96px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.weather-spotlight-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.weather-spotlight-meta strong {
+  font-size: 1.4rem;
+  color: #17324f;
+}
+
+.weather-spotlight-loading {
+  align-items: center;
+}
+
+.weather-note {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.weather-strip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+}
+
+.weather-hour {
+  min-width: 108px;
+  display: grid;
+  gap: 6px;
+  padding: 14px 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(25, 50, 77, 0.08);
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.weather-hour-active {
+  border-color: rgba(42, 111, 190, 0.4);
+  background: linear-gradient(180deg, rgba(224, 239, 255, 0.96) 0%, rgba(244, 249, 255, 0.92) 100%);
+  box-shadow: 0 12px 24px rgba(42, 111, 190, 0.16);
+  transform: translateY(-2px);
+}
+
+.weather-hour-time {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #21415f;
+}
+
+.weather-hour-icon {
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.weather-hour-temp {
+  font-size: 1.2rem;
+  color: #17324f;
+}
+
+.weather-hour-rain,
+.weather-hour-wind {
+  font-size: 0.8rem;
+}
+
+.weather-source {
+  margin: 12px 2px 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.weather-fallback {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.weather-fallback strong {
+  color: #17324f;
+}
+
+.weather-fallback p {
+  margin: 6px 0 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.weather-loading {
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.weather-skeleton {
+  width: 108px;
+  height: 132px;
+  border-radius: 18px;
+  background: linear-gradient(90deg, rgba(223, 232, 244, 0.7) 0%, rgba(246, 250, 255, 0.95) 50%, rgba(223, 232, 244, 0.7) 100%);
+  background-size: 200% 100%;
+  animation: weather-shimmer 1.3s linear infinite;
+}
+
+.weather-skeleton-line {
+  height: 14px;
+  width: 180px;
+}
+
+.weather-skeleton-wide {
+  width: 220px;
+}
+
+.weather-skeleton-short {
+  width: 140px;
+}
+
+.weather-skeleton-icon {
+  width: 84px;
+  height: 84px;
+  border-radius: 18px;
+}
+
+@keyframes weather-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .weather-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .weather-spotlight {
+    flex-direction: column;
+  }
+
+  .weather-spotlight-meta {
+    min-width: 0;
+    grid-auto-flow: column;
+    justify-content: start;
+  }
+}

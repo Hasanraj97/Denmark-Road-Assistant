@@ -1,0 +1,58 @@
+<section class="auth-view">
+  <div class="auth-card">
+    <span class="auth-kicker">Create account</span>
+    <h1>Join the assistant</h1>
+    <p>Create your account to manage your profile and keep your travel setup in one place.</p>
+
+    @if (errorMessage()) {
+      <div class="auth-error">{{ errorMessage() }}</div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="signup()" class="auth-form">
+      <label>
+        <span>Full name</span>
+        <input type="text" formControlName="fullName" placeholder="Ahmed Hasan" />
+        @if (showError('fullName')) {
+          <small class="field-error">Full name is required.</small>
+        }
+      </label>
+      <label>
+        <span>Email</span>
+        <input type="email" formControlName="email" placeholder="ahmed@example.com" />
+        @if (showError('email')) {
+          <small class="field-error">Enter a valid email address.</small>
+        }
+      </label>
+      <label>
+        <span>Phone</span>
+        <input type="text" formControlName="phone" placeholder="12345678" />
+        @if (showError('phone')) {
+          <small class="field-error">Phone is required.</small>
+        }
+      </label>
+      <label>
+        <span>Address</span>
+        <input type="text" formControlName="address" placeholder="Roskilde, Denmark" />
+        @if (showError('address')) {
+          <small class="field-error">Address is required.</small>
+        }
+      </label>
+      <label>
+        <span>Password</span>
+        <input type="password" formControlName="password" placeholder="password123" />
+        @if (showError('password')) {
+          <small class="field-error">Password must be at least 8 characters.</small>
+        }
+      </label>
+
+      <button type="submit" [disabled]="loading()">
+        {{ loading() ? 'Creating account...' : 'Sign up' }}
+      </button>
+    </form>
+
+    <p class="auth-alt">
+      Already registered?
+      <a routerLink="/login">Log in here</a>
+    </p>
+  </div>
+</section>

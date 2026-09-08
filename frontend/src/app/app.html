@@ -1,0 +1,30 @@
+<div class="app-shell">
+  <nav class="topbar" aria-label="Primary">
+    <div class="topbar-inner">
+      <a class="brand" routerLink="/analysis">
+        <img class="brand-logo" src="/images/brand-logo.png" alt="Denmark Road Assistant logo" />
+        <span>Denmark Road Assistant</span>
+      </a>
+
+      <div class="nav-links">
+        <a routerLink="/analysis" routerLinkActive="active">Route Analysis</a>
+        <a routerLink="/history" routerLinkActive="active">History</a>
+        <a routerLink="/profile" routerLinkActive="active">Profile</a>
+      </div>
+
+      <div class="nav-actions">
+        @if (isLoggedIn()) {
+          <button type="button" class="nav-button nav-button-muted user-pill" routerLink="/profile">
+            {{ user()?.fullName || 'Profile' }}
+          </button>
+          <button type="button" class="nav-button nav-button-primary" (click)="logout()">Logout</button>
+        } @else {
+          <a class="nav-button nav-button-muted" routerLink="/signup">Sign up</a>
+          <a class="nav-button nav-button-primary" routerLink="/login">Login</a>
+        }
+      </div>
+    </div>
+  </nav>
+
+  <router-outlet />
+</div>

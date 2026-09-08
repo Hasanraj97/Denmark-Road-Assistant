@@ -1,0 +1,113 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  background:
+    linear-gradient(180deg, rgba(226, 237, 255, 0.68) 0%, rgba(245, 249, 255, 0.72) 100%),
+    url("/images/endless-country-road-stockcake.webp") center / cover no-repeat;
+}
+
+.auth-view {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 120px 20px 40px;
+}
+
+.auth-card {
+  width: min(100%, 470px);
+  padding: 28px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(248, 251, 255, 0.9);
+  box-shadow: 0 22px 56px rgba(20, 48, 82, 0.16);
+  backdrop-filter: blur(16px);
+}
+
+.auth-kicker {
+  display: inline-flex;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #2b5d95;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.78rem;
+}
+
+h1 {
+  margin: 18px 0 10px;
+  color: #173765;
+  font-size: clamp(2.2rem, 6vw, 3rem);
+}
+
+p {
+  margin: 0;
+  color: #48627e;
+  line-height: 1.7;
+}
+
+.auth-error {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 231, 221, 0.82);
+  color: #d34f45;
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.auth-form span {
+  color: #547295;
+  font-weight: 700;
+}
+
+.field-error {
+  color: #d34f45;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.auth-form input {
+  height: 50px;
+  padding: 0 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(25, 50, 77, 0.12);
+  background: rgba(255, 255, 255, 0.95);
+  color: #173765;
+}
+
+.auth-form button {
+  height: 52px;
+  margin-top: 8px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2b7bd1 0%, #1f5eb0 100%);
+  color: white;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.auth-form button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.auth-alt {
+  margin-top: 18px;
+}
+
+.auth-alt a {
+  color: #1f5eb0;
+  font-weight: 700;
+}

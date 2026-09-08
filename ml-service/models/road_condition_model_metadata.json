@@ -1,0 +1,65 @@
+{
+  "model_name": "RandomForestClassifier",
+  "dataset_path": "E:\\sw8-maps\\ml-service\\data\\synthetic_denmark_routes.csv",
+  "model_path": "E:\\sw8-maps\\ml-service\\models\\road_condition_model.joblib",
+  "sample_count": 12000,
+  "accuracy": 0.7788,
+  "labels": [
+    "Excellent",
+    "Good",
+    "Moderate",
+    "Poor",
+    "Very Poor"
+  ],
+  "feature_importances": {
+    "traffic_level": 0.1149,
+    "avg_speed_kmh": 0.0869,
+    "accident_risk_score": 0.0848,
+    "weather_risk": 0.0714,
+    "urban_density": 0.0713,
+    "rainfall_mm": 0.0629,
+    "region_type": 0.056,
+    "distance_km": 0.0509,
+    "road_type_score": 0.0491,
+    "humidity": 0.044
+  },
+  "classification_report": "              precision    recall  f1-score   support\n\n   Excellent       0.76      0.74      0.75       317\n        Good       0.77      0.79      0.78       787\n    Moderate       0.80      0.81      0.81       926\n        Poor       0.77      0.76      0.76       346\n   Very Poor       0.00      0.00      0.00        24\n\n    accuracy                           0.78      2400\n   macro avg       0.62      0.62      0.62      2400\nweighted avg       0.77      0.78      0.77      2400\n",
+  "confusion_matrix": [
+    [
+      234,
+      73,
+      6,
+      4,
+      0
+    ],
+    [
+      66,
+      621,
+      99,
+      1,
+      0
+    ],
+    [
+      2,
+      111,
+      751,
+      62,
+      0
+    ],
+    [
+      2,
+      3,
+      78,
+      263,
+      0
+    ],
+    [
+      5,
+      3,
+      3,
+      13,
+      0
+    ]
+  ],
+  "synthetic_disclaimer": "Synthetic Denmark demo prediction. The model trains on generated data and does not represent real road truth."
+}

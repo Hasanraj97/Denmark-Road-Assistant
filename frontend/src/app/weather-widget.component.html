@@ -1,0 +1,72 @@
+<section class="weather-card">
+  <div class="weather-card-head">
+    <div>
+      <p class="weather-eyebrow">Open-Meteo forecast</p>
+      <h2>Departure Hour Weather</h2>
+    </div>
+    <span class="weather-note">Next 10 hours</span>
+  </div>
+
+  @if (loading()) {
+    <div class="weather-spotlight weather-spotlight-loading">
+      <div class="weather-spotlight-copy">
+        <div class="weather-skeleton weather-skeleton-line weather-skeleton-wide"></div>
+        <div class="weather-skeleton weather-skeleton-line"></div>
+        <div class="weather-skeleton weather-skeleton-line weather-skeleton-short"></div>
+      </div>
+      <div class="weather-skeleton weather-skeleton-icon"></div>
+    </div>
+
+    <div class="weather-loading">
+      @for (placeholder of [1, 2, 3, 4]; track placeholder) {
+        <div class="weather-skeleton"></div>
+      }
+    </div>
+  } @else if (error()) {
+    <div class="weather-fallback">
+      <strong>Weather unavailable</strong>
+      <p>{{ error() }}</p>
+    </div>
+  } @else if (hours().length > 0) {
+    @if (highlightedHour(); as hour) {
+      <div class="weather-spotlight">
+        <div class="weather-spotlight-copy">
+          <span class="weather-spotlight-tag">Closest to departure</span>
+          <h3>{{ hour.displayHour }} departure outlook</h3>
+          <p>
+            {{ hour.weatherLabel }} with {{ hour.temperatureC }}&deg;C temperatures,
+            {{ hour.precipitationProbability }}% chance of precipitation,
+            {{ hour.precipitationMm }} mm expected, and winds around
+            {{ hour.windSpeedKmh }} km/h.
+          </p>
+        </div>
+
+        <div class="weather-spotlight-meta">
+          <span class="weather-spotlight-icon" [attr.aria-label]="hour.weatherLabel">{{ hour.weatherIcon }}</span>
+          <strong>{{ hour.temperatureC }}&deg;</strong>
+        </div>
+      </div>
+    }
+
+    <div class="weather-strip">
+      @for (hour of hours(); track hour.timeIso) {
+        <article class="weather-hour" [class.weather-hour-active]="hour.isDepartureMatch">
+          <span class="weather-hour-time">{{ hour.displayHour }}</span>
+          <span class="weather-hour-icon" [attr.aria-label]="hour.weatherLabel">{{ hour.weatherIcon }}</span>
+          <strong class="weather-hour-temp">{{ hour.temperatureC }}&deg;</strong>
+          <span class="weather-hour-rain">{{ hour.precipitationProbability }}% rain</span>
+          <span class="weather-hour-wind">{{ hour.windSpeedKmh }} km/h</span>
+        </article>
+      }
+    </div>
+
+    <p class="weather-source">
+      Weather from Open-Meteo. The spotlight summarizes the hour closest to the selected departure time.
+    </p>
+  } @else {
+    <div class="weather-fallback">
+      <strong>No forecast yet</strong>
+      <p>Analyze a route to load weather for the route area.</p>
+    </div>
+  }
+</section>
