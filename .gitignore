@@ -76,3 +76,4 @@ frontend/android/app/src/main/assets/capacitor.plugins.json
 .DS_Store
 Thumbs.db
 desktop.ini
+.audit/

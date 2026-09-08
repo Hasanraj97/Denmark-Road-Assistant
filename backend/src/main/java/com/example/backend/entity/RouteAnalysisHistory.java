@@ -7,7 +7,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -50,8 +49,10 @@ public class RouteAnalysisHistory {
     @Column(nullable = false)
     private int leaveEarlyMinutes;
 
-    @Lob
-    @Column(nullable = false, columnDefinition = "LONGTEXT")
+    // Portable across H2 and MySQL. A MySQL-only column type used to be
+    // hard-coded here, which stopped the schema being created on H2.
+    // The advisory text is a few hundred characters, so 4000 is ample.
+    @Column(nullable = false, length = 4000)
     private String advisoryText;
 
     @Column(nullable = false)
@@ -72,8 +73,8 @@ public class RouteAnalysisHistory {
     @Column(length = 255)
     private String routeSummary;
 
-    @Lob
-    @Column(columnDefinition = "LONGTEXT")
+    // JSON snapshot of the feature vector, about 700 characters in practice.
+    @Column(length = 4000)
     private String featureSnapshot;
 
     @Column(nullable = false, updatable = false)
