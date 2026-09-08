@@ -77,3 +77,6 @@ frontend/android/app/src/main/assets/capacitor.plugins.json
 Thumbs.db
 desktop.ini
 .audit/
+
+# --- Runtime logs from start-all.sh / start-all.ps1 ------------------------
+logs/

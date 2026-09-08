@@ -1,6 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
+
+<!--
+  Which hosts this app may talk to over plain, unencrypted HTTP.
+
+  WHY THIS FILE MATTERED SO MUCH
+  The previous version listed exactly one host, 192.168.1.103, and had no
+  <base-config>. Android's rules are:
+    * from targetSdk 28 onwards, cleartext HTTP is DENIED by default, and
+    * android:usesCleartextTraffic in the manifest is IGNORED entirely whenever a
+      network-security-config is present.
+  This app targets SDK 35. So every host except that one LAN address was blocked,
+  including http://10.0.2.2:8080 - which is the address the app actually tries
+  FIRST (see src/environments/environment.android.ts). On an emulator the app
+  therefore could not reach the backend at all. It only worked on a physical
+  phone sitting on the one Wi-Fi network where the developer's PC happened to
+  have the address 192.168.1.103.
+
+  CHANGING THE LAN ADDRESS
+  If you run the backend on your own machine and connect a real phone over Wi-Fi,
+  replace 192.168.1.103 below with your PC's IP address, and change it in
+  frontend/src/environments/environment.android.ts too. Find it with:
+      Windows:  ipconfig          (look for IPv4 Address)
+      macOS:    ipconfig getifaddr en0
+      Linux:    hostname -I
+  Then rebuild:  npm run build:android && npx cap sync android
+
+  These are development conveniences. A real release would talk to an HTTPS
+  backend and this whole file could be deleted.
+-->
 <network-security-config>
+
+    <!-- Everything not listed below must use HTTPS. -->
+    <base-config cleartextTrafficPermitted="false" />
+
     <domain-config cleartextTrafficPermitted="true">
+        <!-- The Android emulator's alias for the host machine's localhost. -->
+        <domain includeSubdomains="true">10.0.2.2</domain>
+
+        <!-- Genuine Android Studio / Genymotion loopback variants. -->
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+
+        <!-- A physical phone reaching the developer's PC over Wi-Fi.
+             Change this to your own address - see the note above. -->
         <domain includeSubdomains="true">192.168.1.103</domain>
     </domain-config>
+
 </network-security-config>
