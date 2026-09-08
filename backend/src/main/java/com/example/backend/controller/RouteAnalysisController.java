@@ -8,9 +8,9 @@ import com.example.backend.dto.RouteRequestDto;
 import com.example.backend.dto.RouteResponseDto;
 import com.example.backend.entity.AppUser;
 import com.example.backend.ml.MlServiceClient;
-import com.example.backend.routing.FeatureEngineeringService;
 import com.example.backend.routing.GeocodingService;
 import com.example.backend.routing.OsrmRoutingService;
+import com.example.backend.routing.RouteObservationService;
 import com.example.backend.service.RouteHistoryService;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,25 +24,35 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api")
 public class RouteAnalysisController {
 
-    private static final String SYNTHETIC_DISCLAIMER =
-            "Synthetic Denmark demo prediction. The model trains on generated data and does not reflect real road truth.";
+    /**
+     * The honest description of what this app does.
+     *
+     * <p>The old wording said the whole prediction was synthetic, which was
+     * wrong in an unhelpful direction: it told users to disregard the weather,
+     * which is a genuine live forecast. What is generated is the road-condition
+     * model's training data, and that is what this sentence says.</p>
+     */
+    private static final String DISCLAIMER =
+            "The weather in this advisory is a real Open-Meteo forecast. The road-condition "
+                    + "grade comes from a model trained on generated data, so treat it as an "
+                    + "illustration of the method rather than a measurement of Danish roads.";
 
     private final GeocodingService geocodingService;
     private final OsrmRoutingService routingService;
-    private final FeatureEngineeringService featureEngineeringService;
+    private final RouteObservationService routeObservationService;
     private final MlServiceClient mlServiceClient;
     private final RouteHistoryService routeHistoryService;
 
     public RouteAnalysisController(
             GeocodingService geocodingService,
             OsrmRoutingService routingService,
-            FeatureEngineeringService featureEngineeringService,
+            RouteObservationService routeObservationService,
             MlServiceClient mlServiceClient,
             RouteHistoryService routeHistoryService
     ) {
         this.geocodingService = geocodingService;
         this.routingService = routingService;
-        this.featureEngineeringService = featureEngineeringService;
+        this.routeObservationService = routeObservationService;
         this.mlServiceClient = mlServiceClient;
         this.routeHistoryService = routeHistoryService;
     }
@@ -68,12 +78,17 @@ public class RouteAnalysisController {
         var destination = geocodingService.geocode(request.destination());
         var route = routingService.computeRoute(origin, destination);
         var routeDto = routingService.toDto(route);
-        var features = featureEngineeringService.deriveFeatures(route, request.selectedDepartureTime());
-        var prediction = mlServiceClient.predict(new PredictionRequestDto(features));
-        Long historyId = null;
 
+        // Gather the raw facts, including the real forecast, and let the ML
+        // service turn them into features with the same code it trained on.
+        var observation = routeObservationService.observe(route, request.selectedDepartureTime());
+        var prediction = mlServiceClient.predict(observation);
+        var features = prediction.features();
+
+        Long historyId = null;
         if (user != null) {
-            historyId = routeHistoryService.saveAnalysis(user, routeDto, features, prediction, request.selectedDepartureTime())
+            historyId = routeHistoryService
+                    .saveAnalysis(user, routeDto, features, prediction, request.selectedDepartureTime())
                     .getId();
         }
 
@@ -81,9 +96,10 @@ public class RouteAnalysisController {
                 routeDto,
                 features,
                 prediction,
+                observation.weather(),
                 historyId,
                 true,
-                SYNTHETIC_DISCLAIMER
+                DISCLAIMER
         );
     }
 

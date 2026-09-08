@@ -2,7 +2,9 @@ package com.example.backend.ml;
 
 import com.example.backend.config.AppProperties;
 import com.example.backend.dto.ModelInfoDto;
+import com.example.backend.dto.ObservationRequestDto;
 import com.example.backend.dto.PredictionRequestDto;
+import com.example.backend.dto.RouteObservationDto;
 import com.example.backend.dto.PredictionResponseDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
@@ -32,9 +34,24 @@ public class MlServiceClient {
         this.baseUrl = appProperties.mlServiceBaseUrl();
     }
 
+    private static final String UNAVAILABLE =
+            "The road-condition model service is unavailable. Start the Python ml-service on port 8000.";
+
+    /**
+     * The preferred path: send the raw facts and let the ML service derive the
+     * features with the same code it trained on.
+     */
+    public PredictionResponseDto predict(RouteObservationDto observation) {
+        return postJson("/predict-road-condition", new ObservationRequestDto(observation),
+                PredictionResponseDto.class, UNAVAILABLE);
+    }
+
+    /**
+     * The direct path, kept for {@code POST /api/predict} so a caller can drive a
+     * specific feature vector by hand.
+     */
     public PredictionResponseDto predict(PredictionRequestDto request) {
-        return postJson("/predict-road-condition", request, PredictionResponseDto.class,
-                "The synthetic ML service is unavailable. Start the Python ml-service on port 8000.");
+        return postJson("/predict-road-condition", request, PredictionResponseDto.class, UNAVAILABLE);
     }
 
     public ModelInfoDto getModelInfo() {

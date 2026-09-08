@@ -1,9 +1,7 @@
 {
   "model_name": "RandomForestClassifier",
-  "dataset_path": "E:\\sw8-maps\\ml-service\\data\\synthetic_denmark_routes.csv",
-  "model_path": "E:\\sw8-maps\\ml-service\\models\\road_condition_model.joblib",
   "sample_count": 12000,
-  "accuracy": 0.7788,
+  "accuracy": 0.8546,
   "labels": [
     "Excellent",
     "Good",
@@ -12,54 +10,110 @@
     "Very Poor"
   ],
   "feature_importances": {
-    "traffic_level": 0.1149,
-    "avg_speed_kmh": 0.0869,
-    "accident_risk_score": 0.0848,
-    "weather_risk": 0.0714,
-    "urban_density": 0.0713,
-    "rainfall_mm": 0.0629,
-    "region_type": 0.056,
-    "distance_km": 0.0509,
-    "road_type_score": 0.0491,
-    "humidity": 0.044
+    "accident_risk_score": 0.2465,
+    "weather_risk": 0.1144,
+    "traffic_level": 0.0912,
+    "rainfall_mm": 0.0744,
+    "vehicle_load_factor": 0.0723,
+    "urban_density": 0.0532,
+    "wind_speed_kmh": 0.0524,
+    "region_type": 0.0431,
+    "humidity": 0.0384,
+    "road_type_score": 0.0372,
+    "distance_km": 0.0355,
+    "avg_speed_kmh": 0.0353,
+    "elevation_variation": 0.0257,
+    "temperature_c": 0.0234,
+    "construction_risk_score": 0.0189,
+    "estimated_duration_min": 0.0171,
+    "time_of_day": 0.0104,
+    "season": 0.0059,
+    "day_of_week": 0.0049
   },
-  "classification_report": "              precision    recall  f1-score   support\n\n   Excellent       0.76      0.74      0.75       317\n        Good       0.77      0.79      0.78       787\n    Moderate       0.80      0.81      0.81       926\n        Poor       0.77      0.76      0.76       346\n   Very Poor       0.00      0.00      0.00        24\n\n    accuracy                           0.78      2400\n   macro avg       0.62      0.62      0.62      2400\nweighted avg       0.77      0.78      0.77      2400\n",
+  "classification_report": "              precision    recall  f1-score   support\n\n   Excellent       0.93      0.90      0.91       534\n        Good       0.81      0.85      0.83       608\n    Moderate       0.86      0.84      0.85       708\n        Poor       0.80      0.82      0.81       357\n   Very Poor       0.86      0.90      0.88       193\n\n    accuracy                           0.85      2400\n   macro avg       0.85      0.86      0.86      2400\nweighted avg       0.86      0.85      0.85      2400\n",
+  "per_class": {
+    "Excellent": {
+      "precision": 0.9318,
+      "recall": 0.8951,
+      "f1": 0.9131,
+      "support": 534
+    },
+    "Good": {
+      "precision": 0.8139,
+      "recall": 0.8487,
+      "f1": 0.8309,
+      "support": 608
+    },
+    "Moderate": {
+      "precision": 0.8607,
+      "recall": 0.8376,
+      "f1": 0.849,
+      "support": 708
+    },
+    "Poor": {
+      "precision": 0.7995,
+      "recall": 0.8151,
+      "f1": 0.8072,
+      "support": 357
+    },
+    "Very Poor": {
+      "precision": 0.865,
+      "recall": 0.8964,
+      "f1": 0.8804,
+      "support": 193
+    }
+  },
   "confusion_matrix": [
     [
-      234,
-      73,
-      6,
-      4,
+      478,
+      56,
+      0,
+      0,
       0
     ],
     [
-      66,
-      621,
-      99,
-      1,
+      35,
+      516,
+      57,
+      0,
       0
     ],
     [
-      2,
-      111,
-      751,
+      0,
       62,
+      593,
+      53,
       0
     ],
     [
-      2,
-      3,
-      78,
-      263,
-      0
+      0,
+      0,
+      39,
+      291,
+      27
     ],
     [
-      5,
-      3,
-      3,
-      13,
-      0
+      0,
+      0,
+      0,
+      20,
+      173
     ]
   ],
-  "synthetic_disclaimer": "Synthetic Denmark demo prediction. The model trains on generated data and does not represent real road truth."
+  "class_balance": {
+    "Excellent": 2672,
+    "Good": 3042,
+    "Moderate": 3540,
+    "Poor": 1782,
+    "Very Poor": 964
+  },
+  "hyperparameters": {
+    "n_estimators": 200,
+    "max_depth": 18,
+    "min_samples_leaf": 4,
+    "class_weight": "balanced_subsample",
+    "random_state": 42
+  },
+  "training_seed": 42,
+  "synthetic_disclaimer": "The weather in this advisory is a real Open-Meteo forecast. The road-condition grade comes from a model trained on generated data, so treat it as an illustration of the method rather than a measurement of Danish roads."
 }

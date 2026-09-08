@@ -10,6 +10,8 @@ public record AppProperties(
         double denmarkCenterLng,
         String countryCode,
         String jwtSecret,
-        long jwtExpirationMs
+        long jwtExpirationMs,
+        String weatherBaseUrl,
+        int weatherTimeoutSeconds
 ) {
 }

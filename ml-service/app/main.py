@@ -1,13 +1,38 @@
+"""
+Denmark Road Condition ML service.
+
+Serves a RandomForest that grades a route Excellent .. Very Poor, and explains
+which features drove that grade.
+
+Two things changed structurally from the original version:
+
+1. **Feature derivation moved here.** The backend used to compute the 19 model
+   features in Java using formulas that had drifted away from the ones used to
+   build the training data. It now sends raw observations - distance, duration,
+   departure time, an urban signal and the real Open-Meteo weather - and
+   ``features.derive_features`` produces the vector. Since the training set is
+   built by calling that same function, the two cannot disagree.
+
+2. **Explanations are measured, not written by hand.** The old influential-feature
+   list was a chain of if-statements with fixed thresholds that had no connection
+   to what the model actually did. Each explanation is now produced by perturbing
+   one feature at a time to its dataset-typical value and measuring how far the
+   predicted probability moves.
+"""
+
 from __future__ import annotations
 
 import json
+import logging
+from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import joblib
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
@@ -16,6 +41,17 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
+from .dataset import generate_dataset
+from .features import (
+    CATEGORICAL_COLUMNS,
+    FEATURE_COLUMNS,
+    LABELS,
+    NUMERIC_COLUMNS,
+    RouteObservation,
+    derive_features,
+)
+
+logger = logging.getLogger("ml-service")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -24,35 +60,50 @@ DATASET_PATH = DATA_DIR / "synthetic_denmark_routes.csv"
 MODEL_PATH = MODEL_DIR / "road_condition_model.joblib"
 METADATA_PATH = MODEL_DIR / "road_condition_model_metadata.json"
 
-LABELS = ["Excellent", "Good", "Moderate", "Poor", "Very Poor"]
-NUMERIC_COLUMNS = [
-    "distance_km",
-    "estimated_duration_min",
-    "avg_speed_kmh",
-    "road_type_score",
-    "traffic_level",
-    "weather_risk",
-    "rainfall_mm",
-    "urban_density",
-    "accident_risk_score",
-    "construction_risk_score",
-    "elevation_variation",
-    "temperature_c",
-    "humidity",
-    "wind_speed_kmh",
-    "vehicle_load_factor",
-]
-CATEGORICAL_COLUMNS = ["time_of_day", "day_of_week", "season", "region_type"]
-FEATURE_COLUMNS = NUMERIC_COLUMNS + CATEGORICAL_COLUMNS
+SAMPLE_COUNT = 12000
+RANDOM_SEED = 42
+
+DISCLAIMER = (
+    "The weather in this advisory is a real Open-Meteo forecast. The road-condition "
+    "grade comes from a model trained on generated data, so treat it as an "
+    "illustration of the method rather than a measurement of Danish roads."
+)
 
 
-class FeatureInfluence(BaseModel):
-    feature: str
-    value: str
-    impact: str
+# ---------------------------------------------------------------------------
+# Request and response shapes
+# ---------------------------------------------------------------------------
+
+class WeatherInput(BaseModel):
+    temperature_c: float = Field(alias="temperatureC")
+    rainfall_mm: float = Field(alias="rainfallMm")
+    humidity: float
+    wind_speed_kmh: float = Field(alias="windSpeedKmh")
+
+    model_config = {"populate_by_name": True}
+
+
+class ObservationInput(BaseModel):
+    """The raw facts the backend knows about one trip."""
+
+    distance_km: float = Field(alias="distanceKm")
+    duration_min: float = Field(alias="durationMin")
+    # ISO-8601 instant, already resolved by the backend. One timestamp supplies
+    # the hour, the weekday AND the season, so they can never disagree.
+    departure_iso: str = Field(alias="departureIso")
+    urban_signal: float = Field(alias="urbanSignal")
+    weather: WeatherInput
+
+    model_config = {"populate_by_name": True}
 
 
 class RouteFeatures(BaseModel):
+    """The legacy shape: a fully derived feature vector supplied by the caller.
+
+    Kept so that ``POST /api/predict`` and the tests can drive a specific vector
+    directly. The preferred path is ``observation``.
+    """
+
     distance_km: float = Field(alias="distanceKm")
     estimated_duration_min: float = Field(alias="estimatedDurationMin")
     avg_speed_kmh: float = Field(alias="avgSpeedKmh")
@@ -77,7 +128,16 @@ class RouteFeatures(BaseModel):
 
 
 class PredictionRequest(BaseModel):
-    features: RouteFeatures
+    """Exactly one of ``observation`` or ``features`` must be supplied."""
+
+    observation: ObservationInput | None = None
+    features: RouteFeatures | None = None
+
+
+class FeatureInfluence(BaseModel):
+    feature: str
+    value: str
+    impact: str
 
 
 class PredictionResponse(BaseModel):
@@ -87,13 +147,13 @@ class PredictionResponse(BaseModel):
     advisory: str
     influentialFeatures: list[FeatureInfluence]
     classProbabilities: dict[str, float]
+    features: dict[str, Any]
     syntheticPrediction: bool = True
+    disclaimer: str = DISCLAIMER
 
 
 class ModelInfoResponse(BaseModel):
     modelName: str
-    datasetPath: str
-    modelPath: str
     sampleCount: int
     accuracy: float
     labels: list[str]
@@ -101,34 +161,117 @@ class ModelInfoResponse(BaseModel):
     syntheticDisclaimer: str
 
 
+# ---------------------------------------------------------------------------
+# Human-readable names, used in explanations
+# ---------------------------------------------------------------------------
+
+FEATURE_LABELS = {
+    "traffic_level": "Traffic level",
+    "weather_risk": "Weather risk",
+    "rainfall_mm": "Rainfall",
+    "wind_speed_kmh": "Wind speed",
+    "temperature_c": "Temperature",
+    "humidity": "Humidity",
+    "urban_density": "Built-up surroundings",
+    "accident_risk_score": "Accident exposure",
+    "construction_risk_score": "Roadworks risk",
+    "vehicle_load_factor": "How loaded the road is",
+    "road_type_score": "Road grade",
+    "avg_speed_kmh": "Average speed",
+    "distance_km": "Distance",
+    "estimated_duration_min": "Journey time",
+    "elevation_variation": "Terrain variation",
+    "time_of_day": "Time of day",
+    "day_of_week": "Day of week",
+    "season": "Season",
+    "region_type": "Region type",
+}
+
+FEATURE_UNITS = {
+    "rainfall_mm": " mm/h",
+    "wind_speed_kmh": " km/h",
+    "temperature_c": " °C",
+    "avg_speed_kmh": " km/h",
+    "distance_km": " km",
+    "estimated_duration_min": " min",
+}
+
+
+def _to_camel_case(name: str) -> str:
+    head, *tail = name.split("_")
+    return head + "".join(part.title() for part in tail)
+
+
+def _features_for_api(features: dict[str, Any]) -> dict[str, Any]:
+    """
+    Present the feature vector in camelCase.
+
+    Internally every feature name is snake_case, which is the Python convention
+    and matches the CSV column headers. The JSON API and the Angular frontend
+    both speak camelCase, so the conversion happens here, at the boundary,
+    rather than being smeared through the model code.
+    """
+    return {_to_camel_case(key): value for key, value in features.items()}
+
+
+def _format_value(name: str, value: Any) -> str:
+    if isinstance(value, str):
+        return value.replace("_", " ")
+    unit = FEATURE_UNITS.get(name, "")
+    return f"{float(value):.2f}".rstrip("0").rstrip(".") + unit
+
+
 class ModelManager:
     def __init__(self) -> None:
         self.pipeline: Pipeline | None = None
         self.metadata: dict[str, Any] = {}
+        # Typical values, used as the neutral baseline when measuring how much
+        # each feature moved a particular prediction.
+        self.baseline: dict[str, Any] = {}
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
-    def startup(self) -> None:
-        if not DATASET_PATH.exists():
-            dataset = self._generate_dataset()
-            dataset.to_csv(DATASET_PATH, index=False)
-            print(f"Generated synthetic dataset at {DATASET_PATH}")
+    # -- lifecycle ----------------------------------------------------------
 
-        if MODEL_PATH.exists() and METADATA_PATH.exists():
+    def startup(self) -> None:
+        if MODEL_PATH.exists() and METADATA_PATH.exists() and DATASET_PATH.exists():
             self.pipeline = joblib.load(MODEL_PATH)
-            self.metadata = json.loads(METADATA_PATH.read_text())
-            self._print_saved_metrics()
+            self.metadata = json.loads(METADATA_PATH.read_text(encoding="utf-8"))
+            self._load_baseline()
+            logger.info(
+                "Loaded saved model. Accuracy %s on %s samples.",
+                self.metadata.get("accuracy"),
+                self.metadata.get("sample_count"),
+            )
         else:
+            logger.info("No saved model found. Training a new one, this takes a moment...")
             self.retrain()
 
+    def _load_baseline(self) -> None:
+        frame = pd.read_csv(DATASET_PATH)
+        self.baseline = self._baseline_from(frame)
+
+    @staticmethod
+    def _baseline_from(frame: pd.DataFrame) -> dict[str, Any]:
+        baseline: dict[str, Any] = {}
+        for column in NUMERIC_COLUMNS:
+            baseline[column] = float(frame[column].median())
+        for column in CATEGORICAL_COLUMNS:
+            baseline[column] = str(frame[column].mode().iloc[0])
+        return baseline
+
+    # -- training -----------------------------------------------------------
+
     def retrain(self) -> ModelInfoResponse:
-        dataset = self._generate_dataset()
+        dataset = generate_dataset(SAMPLE_COUNT, seed=RANDOM_SEED)
         dataset.to_csv(DATASET_PATH, index=False)
+        self.baseline = self._baseline_from(dataset)
+
         x_train, x_test, y_train, y_test = train_test_split(
             dataset[FEATURE_COLUMNS],
             dataset["road_condition_label"],
             test_size=0.2,
-            random_state=42,
+            random_state=RANDOM_SEED,
             stratify=dataset["road_condition_label"],
         )
 
@@ -143,280 +286,73 @@ class ModelManager:
             ]
         )
 
+        # Fewer, shallower trees than the original 280 x unlimited depth. That
+        # model serialised to 82 MB, which is far too large to keep alongside a
+        # student project and had to be git-ignored. min_samples_leaf=4 and a
+        # depth cap cost very little accuracy and shrink the artefact by orders
+        # of magnitude. class_weight keeps the rarer grades learnable.
         classifier = RandomForestClassifier(
-            n_estimators=280,
-            min_samples_leaf=2,
-            random_state=42,
+            n_estimators=200,
+            max_depth=18,
+            min_samples_leaf=4,
+            random_state=RANDOM_SEED,
             class_weight="balanced_subsample",
+            n_jobs=-1,
         )
 
         self.pipeline = Pipeline(
-            steps=[
-                ("preprocessor", preprocessor),
-                ("classifier", classifier),
-            ]
+            steps=[("preprocessor", preprocessor), ("classifier", classifier)]
         )
         self.pipeline.fit(x_train, y_train)
 
         predictions = self.pipeline.predict(x_test)
         accuracy = accuracy_score(y_test, predictions)
         report_text = classification_report(y_test, predictions, labels=LABELS, zero_division=0)
+        report_dict = classification_report(
+            y_test, predictions, labels=LABELS, zero_division=0, output_dict=True
+        )
         confusion = confusion_matrix(y_test, predictions, labels=LABELS).tolist()
-        importances = self._aggregate_feature_importances()
+
+        class_balance = {
+            label: int((dataset["road_condition_label"] == label).sum()) for label in LABELS
+        }
 
         self.metadata = {
             "model_name": "RandomForestClassifier",
-            "dataset_path": str(DATASET_PATH),
-            "model_path": str(MODEL_PATH),
             "sample_count": int(len(dataset)),
             "accuracy": round(float(accuracy), 4),
             "labels": LABELS,
-            "feature_importances": importances,
+            "feature_importances": self._aggregate_feature_importances(),
             "classification_report": report_text,
-            "confusion_matrix": confusion,
-            "synthetic_disclaimer": (
-                "Synthetic Denmark demo prediction. The model trains on generated data and does not "
-                "represent real road truth."
-            ),
-        }
-
-        joblib.dump(self.pipeline, MODEL_PATH)
-        METADATA_PATH.write_text(json.dumps(self.metadata, indent=2))
-        self._print_training_metrics()
-        return self.get_model_info()
-
-    def predict(self, request: PredictionRequest) -> PredictionResponse:
-        if self.pipeline is None:
-            raise RuntimeError("Model pipeline is not loaded.")
-
-        feature_dict = request.features.model_dump(by_alias=False)
-        frame = pd.DataFrame([feature_dict])
-        probabilities = self.pipeline.predict_proba(frame)[0]
-        classes = self.pipeline.named_steps["classifier"].classes_
-        probability_map = {
-            str(label): round(float(probabilities[idx]), 4)
-            for idx, label in enumerate(classes)
-        }
-        predicted_label = str(classes[int(np.argmax(probabilities))])
-        confidence = round(float(np.max(probabilities)), 4)
-        leave_early = self._leave_early_minutes(predicted_label, feature_dict)
-        influences = self._influential_features(feature_dict, predicted_label)
-        advisory = self._advisory_text(
-            predicted_label,
-            confidence,
-            leave_early,
-            feature_dict,
-            influences,
-        )
-
-        ordered_probabilities = {
-            label: probability_map.get(label, 0.0) for label in LABELS
-        }
-        return PredictionResponse(
-            roadConditionLabel=predicted_label,
-            confidence=confidence,
-            leaveEarlyMinutes=leave_early,
-            advisory=advisory,
-            influentialFeatures=influences,
-            classProbabilities=ordered_probabilities,
-            syntheticPrediction=True,
-        )
-
-    def get_model_info(self) -> ModelInfoResponse:
-        return ModelInfoResponse(
-            modelName=self.metadata["model_name"],
-            datasetPath=self.metadata["dataset_path"],
-            modelPath=self.metadata["model_path"],
-            sampleCount=self.metadata["sample_count"],
-            accuracy=self.metadata["accuracy"],
-            labels=self.metadata["labels"],
-            featureImportances=self.metadata["feature_importances"],
-            syntheticDisclaimer=self.metadata["synthetic_disclaimer"],
-        )
-
-    def _generate_dataset(self, sample_count: int = 12000) -> pd.DataFrame:
-        rng = np.random.default_rng(42)
-        rows: list[dict[str, Any]] = []
-
-        region_choices = ["urban", "suburban", "regional"]
-        region_probs = [0.34, 0.28, 0.38]
-        season_choices = ["winter", "spring", "summer", "autumn"]
-        season_probs = [0.24, 0.24, 0.27, 0.25]
-        day_choices = [
-            "monday",
-            "tuesday",
-            "wednesday",
-            "thursday",
-            "friday",
-            "saturday",
-            "sunday",
-        ]
-        day_probs = [0.16, 0.16, 0.16, 0.16, 0.16, 0.1, 0.1]
-        time_choices = ["early_morning", "morning_peak", "midday", "afternoon_peak", "evening", "night"]
-        time_probs = [0.12, 0.2, 0.22, 0.2, 0.16, 0.1]
-
-        def apply_noise(value: float) -> float:
-            return value * (1.0 + rng.uniform(-0.03, 0.03))
-
-        def derive_hour(bucket: str) -> int:
-            hour_map = {
-                "early_morning": (0, 5),
-                "morning_peak": (6, 9),
-                "midday": (10, 14),
-                "afternoon_peak": (15, 18),
-                "evening": (19, 22),
-                "night": (23, 23),
-            }
-            start, end = hour_map[bucket]
-            if start == end:
-                return start
-            return int(rng.integers(start, end + 1))
-
-        def time_score(hour: int, day_of_week: str) -> float:
-            if (7 <= hour <= 9) or (15 <= hour <= 18):
-                score = 0.75
-            elif 10 <= hour <= 14:
-                score = 0.50
-            else:
-                score = 0.25
-
-            if day_of_week in {"saturday", "sunday"}:
-                score -= 0.10
-
-            return float(np.clip(score, 0.0, 1.0))
-
-        def weather_score(season: str) -> float:
-            return {
-                "winter": 0.75,
-                "spring": 0.50,
-                "autumn": 0.50,
-                "summer": 0.25,
-            }[season]
-
-        def derive_region_type(urban_density: float, distance_km: float) -> str:
-            if urban_density > 0.68 or distance_km < 22:
-                return "urban"
-            if urban_density > 0.44 or distance_km < 80:
-                return "suburban"
-            return "regional"
-
-        for _ in range(sample_count):
-            region_seed = rng.choice(region_choices, p=region_probs)
-            season = rng.choice(season_choices, p=season_probs)
-            day_of_week = rng.choice(day_choices, p=day_probs)
-            time_of_day = rng.choice(time_choices, p=time_probs)
-            departure_hour = derive_hour(time_of_day)
-
-            if region_seed == "urban":
-                distance_km = float(rng.uniform(4, 32))
-                urban_density = float(rng.uniform(0.64, 0.82))
-                avg_speed_kmh = float(rng.uniform(24, 46))
-            elif region_seed == "suburban":
-                distance_km = float(rng.uniform(12, 85))
-                urban_density = float(rng.uniform(0.44, 0.66))
-                avg_speed_kmh = float(rng.uniform(42, 78))
-            else:
-                distance_km = float(rng.uniform(45, 310))
-                urban_density = float(rng.uniform(0.19, 0.40))
-                avg_speed_kmh = float(rng.uniform(68, 108))
-
-            if distance_km < 20:
-                urban_density += 0.15
-            if distance_km > 100:
-                urban_density -= 0.15
-            urban_density = float(np.clip(apply_noise(urban_density), 0.0, 1.0))
-
-            region_type = derive_region_type(urban_density, distance_km)
-            road_type_score = float(np.clip(apply_noise(0.20 + avg_speed_kmh / 140.0), 0.0, 1.0))
-
-            traffic_level = float(
-                np.clip(
-                    apply_noise(0.20 + urban_density * 0.40 + time_score(departure_hour, day_of_week) * 0.40),
-                    0.0,
-                    1.0,
-                )
-            )
-
-            weather_risk = float(np.clip(apply_noise(0.20 + weather_score(season) * 0.60), 0.0, 1.0))
-            rainfall_mm = float(max(0.0, round(apply_noise(weather_risk * 8.0), 2)))
-            humidity = float(np.clip(apply_noise(0.40 + weather_risk * 0.40), 0.0, 1.0))
-            wind_speed_kmh = float(max(5.0, round(apply_noise(10.0 + weather_risk * 18.0), 2)))
-            temperature_c = float(
-                round(
-                    apply_noise(
-                        {
-                            "winter": 1.5,
-                            "spring": 9.0,
-                            "summer": 18.0,
-                            "autumn": 10.0,
-                        }[season]
-                    ),
-                    2,
-                )
-            )
-            construction_risk_score = float(np.clip(apply_noise(0.20 + urban_density * 0.40), 0.0, 1.0))
-            elevation_variation = float(max(2.0, round(apply_noise(5.0 + distance_km * 0.05), 2)))
-            accident_risk_score = float(
-                np.clip(apply_noise(0.20 + traffic_level * 0.35 + weather_risk * 0.30), 0.0, 1.0)
-            )
-            vehicle_load_factor = float(np.clip(apply_noise(0.20 + traffic_level * 0.60), 0.0, 1.0))
-
-            estimated_duration_min = float((distance_km / max(avg_speed_kmh, 1.0)) * 60)
-
-            condition_score = (
-                traffic_level * 0.32
-                + weather_risk * 0.2
-                + min(rainfall_mm / 12.0, 1.0) * 0.08
-                + urban_density * 0.1
-                + accident_risk_score * 0.12
-                + construction_risk_score * 0.08
-                + vehicle_load_factor * 0.05
-                + min(wind_speed_kmh / 45.0, 1.0) * 0.05
-                - road_type_score * 0.13
-                - min(avg_speed_kmh / 110.0, 1.0) * 0.08
-                + rng.normal(0, 0.04)
-            )
-
-            if condition_score < 0.18:
-                label = "Excellent"
-            elif condition_score < 0.33:
-                label = "Good"
-            elif condition_score < 0.51:
-                label = "Moderate"
-            elif condition_score < 0.68:
-                label = "Poor"
-            else:
-                label = "Very Poor"
-
-            if rng.random() < 0.03:
-                label = rng.choice(LABELS)
-
-            rows.append(
-                {
-                    "distance_km": round(distance_km, 2),
-                    "estimated_duration_min": round(estimated_duration_min, 2),
-                    "avg_speed_kmh": round(avg_speed_kmh, 2),
-                    "road_type_score": round(road_type_score, 2),
-                    "traffic_level": round(traffic_level, 2),
-                    "weather_risk": round(weather_risk, 2),
-                    "rainfall_mm": round(rainfall_mm, 2),
-                    "time_of_day": time_of_day,
-                    "day_of_week": day_of_week,
-                    "urban_density": round(urban_density, 2),
-                    "accident_risk_score": round(accident_risk_score, 2),
-                    "construction_risk_score": round(construction_risk_score, 2),
-                    "elevation_variation": round(elevation_variation, 2),
-                    "temperature_c": round(temperature_c, 2),
-                    "humidity": round(humidity, 2),
-                    "wind_speed_kmh": round(wind_speed_kmh, 2),
-                    "season": season,
-                    "region_type": region_type,
-                    "vehicle_load_factor": round(vehicle_load_factor, 2),
-                    "road_condition_label": label,
+            "per_class": {
+                label: {
+                    "precision": round(float(report_dict[label]["precision"]), 4),
+                    "recall": round(float(report_dict[label]["recall"]), 4),
+                    "f1": round(float(report_dict[label]["f1-score"]), 4),
+                    "support": int(report_dict[label]["support"]),
                 }
-            )
+                for label in LABELS
+            },
+            "confusion_matrix": confusion,
+            "class_balance": class_balance,
+            "hyperparameters": {
+                "n_estimators": 200,
+                "max_depth": 18,
+                "min_samples_leaf": 4,
+                "class_weight": "balanced_subsample",
+                "random_state": RANDOM_SEED,
+            },
+            "training_seed": RANDOM_SEED,
+            "synthetic_disclaimer": DISCLAIMER,
+        }
 
-        return pd.DataFrame(rows)
+        # compress=3 trades a little load time for a much smaller file.
+        joblib.dump(self.pipeline, MODEL_PATH, compress=3)
+        METADATA_PATH.write_text(json.dumps(self.metadata, indent=2), encoding="utf-8")
+
+        logger.info("Trained model. Accuracy %.4f", accuracy)
+        logger.info("\n%s", report_text)
+        return self.get_model_info()
 
     def _aggregate_feature_importances(self) -> dict[str, float]:
         assert self.pipeline is not None
@@ -441,208 +377,256 @@ class ModelManager:
                     aggregated[feature] += float(importance)
                     break
 
-        sorted_features = sorted(aggregated.items(), key=lambda item: item[1], reverse=True)
-        return {key: round(value, 4) for key, value in sorted_features[:10]}
+        ordered = sorted(aggregated.items(), key=lambda item: item[1], reverse=True)
+        return {key: round(value, 4) for key, value in ordered}
 
-    def _leave_early_minutes(self, label: str, features: dict[str, Any]) -> int:
-        traffic = float(features["traffic_level"])
-        weather = float(features["weather_risk"])
-        distance = float(features["distance_km"])
+    # -- prediction ---------------------------------------------------------
 
-        if label == "Excellent":
-            return 0 if traffic < 0.45 else 5
-        if label == "Good":
-            return 0 if traffic < 0.55 and weather < 0.4 else 5
-        if label == "Moderate":
-            return 10 if distance < 90 else 15
-        if label == "Poor":
-            return 20 if distance < 120 else 25
-        return 30 if distance < 150 else 35
+    def predict(self, features: dict[str, Any], weather_source: str = "unknown") -> PredictionResponse:
+        if self.pipeline is None:
+            raise RuntimeError("Model pipeline is not loaded.")
 
-    def _influential_features(self, features: dict[str, Any], label: str) -> list[FeatureInfluence]:
+        frame = pd.DataFrame([{column: features[column] for column in FEATURE_COLUMNS}])
+        probabilities = self.pipeline.predict_proba(frame)[0]
+        classes = list(self.pipeline.named_steps["classifier"].classes_)
+
+        predicted_index = int(np.argmax(probabilities))
+        predicted_label = str(classes[predicted_index])
+        confidence = round(float(probabilities[predicted_index]), 4)
+
+        probability_map = {
+            str(label): round(float(probabilities[index]), 4)
+            for index, label in enumerate(classes)
+        }
+        ordered_probabilities = {label: probability_map.get(label, 0.0) for label in LABELS}
+
+        influences = self._explain(features, predicted_label, predicted_index)
+        leave_early = self._leave_early_minutes(predicted_label, features)
+        advisory = self._advisory_text(
+            predicted_label, confidence, leave_early, features, influences, weather_source
+        )
+
+        return PredictionResponse(
+            roadConditionLabel=predicted_label,
+            confidence=confidence,
+            leaveEarlyMinutes=leave_early,
+            advisory=advisory,
+            influentialFeatures=influences,
+            classProbabilities=ordered_probabilities,
+            features=_features_for_api(features),
+        )
+
+    def _explain(
+        self, features: dict[str, Any], predicted_label: str, predicted_index: int
+    ) -> list[FeatureInfluence]:
+        """
+        Measure what actually drove this prediction.
+
+        For every feature we build a copy of this route with that one feature
+        reset to its dataset-typical value, ask the model again, and record how
+        far the probability of the predicted grade falls. A large fall means that
+        feature is genuinely holding the prediction up.
+
+        All 19 variants go through the model in a single batched call, so this
+        costs about as much as one extra prediction.
+        """
+        assert self.pipeline is not None
+
+        base_row = {column: features[column] for column in FEATURE_COLUMNS}
+        variants = []
+        for column in FEATURE_COLUMNS:
+            variant = dict(base_row)
+            variant[column] = self.baseline.get(column, base_row[column])
+            variants.append(variant)
+
+        frames = pd.DataFrame([base_row] + variants)
+        probabilities = self.pipeline.predict_proba(frames)[:, predicted_index]
+        base_probability = float(probabilities[0])
+
+        contributions = []
+        for offset, column in enumerate(FEATURE_COLUMNS, start=1):
+            # Positive contribution = this feature pushes TOWARDS the predicted grade.
+            contributions.append((column, base_probability - float(probabilities[offset])))
+
+        contributions.sort(key=lambda item: item[1], reverse=True)
+
         influences: list[FeatureInfluence] = []
-
-        if features["traffic_level"] >= 0.65:
+        for column, contribution in contributions[:4]:
+            if contribution <= 0.005:
+                continue
             influences.append(
                 FeatureInfluence(
-                    feature="Traffic level",
-                    value=f"{features['traffic_level']:.2f}",
-                    impact="Heavy traffic pressure is likely to slow the route, especially near busier junctions.",
-                )
-            )
-        if features["weather_risk"] >= 0.55 or features["rainfall_mm"] >= 4:
-            influences.append(
-                FeatureInfluence(
-                    feature="Weather risk",
-                    value=f"{features['weather_risk']:.2f} / {features['rainfall_mm']:.1f} mm rain",
-                    impact="Wet or windy conditions may reduce comfort and increase caution on the road.",
-                )
-            )
-        if features["urban_density"] >= 0.65:
-            influences.append(
-                FeatureInfluence(
-                    feature="Urban density",
-                    value=f"{features['urban_density']:.2f}",
-                    impact="Urban sections usually mean more signals, merges, and short-stop delays.",
-                )
-            )
-        if features["construction_risk_score"] >= 0.45:
-            influences.append(
-                FeatureInfluence(
-                    feature="Construction-style risk",
-                    value=f"{features['construction_risk_score']:.2f}",
-                    impact="The synthetic model sees enough disruption risk to allow for lane or speed reductions.",
-                )
-            )
-        if not influences and label in {"Excellent", "Good"}:
-            influences.append(
-                FeatureInfluence(
-                    feature="Road profile",
-                    value=f"road_type_score {features['road_type_score']:.2f}",
-                    impact="The route profile looks relatively smooth, which supports steadier travel conditions.",
-                )
-            )
-        if len(influences) < 3:
-            influences.append(
-                FeatureInfluence(
-                    feature="Average speed",
-                    value=f"{features['avg_speed_kmh']:.1f} km/h",
-                    impact="The expected average speed helps the model judge whether the route should feel smooth or delayed.",
+                    feature=FEATURE_LABELS.get(column, column),
+                    value=_format_value(column, features[column]),
+                    impact=self._impact_sentence(column, features[column], contribution, predicted_label),
                 )
             )
 
-        return influences[:4]
+        if not influences:
+            # Everything about this route is close to typical, which is itself
+            # the explanation.
+            top_column = contributions[0][0]
+            influences.append(
+                FeatureInfluence(
+                    feature=FEATURE_LABELS.get(top_column, top_column),
+                    value=_format_value(top_column, features[top_column]),
+                    impact="Nothing about this route stands out from a typical Danish trip, "
+                           "so the grade rests on the overall picture rather than any one factor.",
+                )
+            )
+        return influences
 
+    @staticmethod
+    def _impact_sentence(column: str, value: Any, contribution: float, label: str) -> str:
+        strength = "strongly" if contribution >= 0.10 else "moderately" if contribution >= 0.04 else "slightly"
+        explanations = {
+            "traffic_level": "how busy the road is expected to be",
+            "weather_risk": "the combined weather hazard from rain, ice, wind and mist",
+            "rainfall_mm": "the amount of rain forecast for the departure hour",
+            "wind_speed_kmh": "the forecast wind, which matters on exposed stretches and bridges",
+            "temperature_c": "the temperature, which decides whether ice is a possibility",
+            "humidity": "the humidity, used here as a stand-in for mist and fog",
+            "urban_density": "how built-up the route is, and so how many junctions and stops it has",
+            "accident_risk_score": "the combination of traffic and weather that raises accident exposure",
+            "construction_risk_score": "the likelihood of roadworks on a route like this at this time of year",
+            "vehicle_load_factor": "how much of the road's capacity is expected to be in use",
+            "road_type_score": "the grade of road implied by the sustained speed",
+            "avg_speed_kmh": "the average speed the routing engine expects",
+            "distance_km": "the length of the trip",
+            "estimated_duration_min": "how long the trip is expected to take",
+            "elevation_variation": "how much the terrain varies along the way",
+            "time_of_day": "the departure time",
+            "day_of_week": "the day of the week",
+            "season": "the time of year",
+            "region_type": "the kind of area the route runs through",
+        }
+        reason = explanations.get(column, "this input")
+        return f"The model leaned {strength} on {reason} when settling on \"{label}\"."
+
+    @staticmethod
+    def _leave_early_minutes(label: str, features: dict[str, Any]) -> int:
+        """A buffer that scales with both the grade and the length of the trip."""
+        base = {"Excellent": 0, "Good": 5, "Moderate": 10, "Poor": 20, "Very Poor": 30}[label]
+        if base == 0:
+            return 0
+        distance = float(features["distance_km"])
+        if distance > 150:
+            return base + 10
+        if distance > 80:
+            return base + 5
+        return base
+
+    @staticmethod
     def _advisory_text(
-        self,
         label: str,
         confidence: float,
         leave_early: int,
         features: dict[str, Any],
         influences: list[FeatureInfluence],
+        weather_source: str,
     ) -> str:
-        traffic = float(features["traffic_level"])
-        weather = float(features["weather_risk"])
-        region = str(features["region_type"])
-
         condition_sentence = {
-            "Excellent": "Conditions look excellent for this Denmark route, so the trip should feel fairly smooth.",
+            "Excellent": "Conditions look excellent for this Denmark route, so the trip should feel smooth.",
             "Good": "Conditions look mostly good on this route, with only light disruption likely.",
-            "Moderate": "Road conditions may be moderate on this route, especially where traffic and local slowdowns build up.",
-            "Poor": "This route may face poor conditions because several delay signals line up at the same time.",
-            "Very Poor": "This route may face very poor conditions, so extra caution and buffer time are recommended.",
+            "Moderate": "Conditions look moderate, especially where traffic and local slowdowns build up.",
+            "Poor": "Conditions look poor, because several delay signals line up at the same time.",
+            "Very Poor": "Conditions look very poor. Allow extra time, and consider whether the trip can wait.",
         }[label]
 
         leave_sentence = (
-            "You likely do not need to leave early unless conditions change unexpectedly."
+            "You should not need to leave early unless conditions change."
             if leave_early == 0
             else f"Leaving about {leave_early} minutes early would be a sensible buffer."
         )
 
-        reasons: list[str] = []
-        if traffic >= 0.65:
-            reasons.append("heavier traffic pressure")
-        elif traffic >= 0.45:
-            reasons.append("moderate traffic build-up")
-        if weather >= 0.55:
-            reasons.append("weather-related risk")
-        if float(features["construction_risk_score"]) >= 0.45:
-            reasons.append("construction-like disruption")
-        if region == "urban":
-            reasons.append("urban stop-and-go sections")
-        elif region == "regional" and float(features["road_type_score"]) >= 0.7:
-            reasons.append("longer smoother regional road sections")
-
-        reason_text = (
-            "The model is mainly reacting to " + ", ".join(reasons[:3]) + "."
-            if reasons
-            else influences[0].impact
+        reason_sentence = (
+            "The strongest single factor was " + influences[0].feature.lower() + "."
+            if influences
+            else "No single factor dominated this estimate."
         )
 
-        confidence_text = (
-            "Confidence is solid for this synthetic estimate."
-            if confidence >= 0.7
-            else "Confidence is moderate, so treat this as a helpful synthetic guide rather than a certainty."
+        weather_sentence = (
+            "The weather used here is a live Open-Meteo forecast for the middle of your route."
+            if weather_source == "open-meteo"
+            else "Live weather was not available, so a seasonal estimate was used instead."
         )
 
-        return " ".join([condition_sentence, leave_sentence, reason_text, confidence_text])
+        confidence_sentence = (
+            "The model is fairly confident in this grade."
+            if confidence >= 0.60
+            else "The model is not strongly confident, so treat this as a guide rather than a certainty."
+        )
 
-    def _print_saved_metrics(self) -> None:
-        print("Loaded saved road-condition model.")
-        print(f"Accuracy: {self.metadata['accuracy']}")
-        print("Classification report:")
-        print(self.metadata["classification_report"])
-        print("Confusion matrix:")
-        print(np.array(self.metadata["confusion_matrix"]))
+        return " ".join(
+            [condition_sentence, leave_sentence, reason_sentence, weather_sentence, confidence_sentence]
+        )
 
-    def _print_training_metrics(self) -> None:
-        print("Trained synthetic road-condition model.")
-        print(f"Accuracy: {self.metadata['accuracy']}")
-        print("Classification report:")
-        print(self.metadata["classification_report"])
-        print("Confusion matrix:")
-        print(np.array(self.metadata["confusion_matrix"]))
+    def get_model_info(self) -> ModelInfoResponse:
+        return ModelInfoResponse(
+            modelName=self.metadata["model_name"],
+            sampleCount=self.metadata["sample_count"],
+            accuracy=self.metadata["accuracy"],
+            labels=self.metadata["labels"],
+            # Only the ten strongest are worth showing.
+            featureImportances=dict(list(self.metadata["feature_importances"].items())[:10]),
+            syntheticDisclaimer=self.metadata["synthetic_disclaimer"],
+        )
 
 
-app = FastAPI(title="Denmark Road Condition ML Service")
 manager = ModelManager()
 
 
-def _normalize_prediction_payload(payload: dict[str, Any]) -> PredictionRequest:
-    raw_features = payload.get("features", payload)
-    if not isinstance(raw_features, dict):
-        raise HTTPException(status_code=422, detail="Request must contain a features object.")
-
-    alias_map = {
-        "distance_km": "distanceKm",
-        "estimated_duration_min": "estimatedDurationMin",
-        "avg_speed_kmh": "avgSpeedKmh",
-        "road_type_score": "roadTypeScore",
-        "traffic_level": "trafficLevel",
-        "weather_risk": "weatherRisk",
-        "rainfall_mm": "rainfallMm",
-        "time_of_day": "timeOfDay",
-        "day_of_week": "dayOfWeek",
-        "urban_density": "urbanDensity",
-        "accident_risk_score": "accidentRiskScore",
-        "construction_risk_score": "constructionRiskScore",
-        "elevation_variation": "elevationVariation",
-        "temperature_c": "temperatureC",
-        "wind_speed_kmh": "windSpeedKmh",
-        "region_type": "regionType",
-        "vehicle_load_factor": "vehicleLoadFactor",
-    }
-
-    normalized = dict(raw_features)
-    for snake_key, camel_key in alias_map.items():
-        if snake_key in normalized and camel_key not in normalized:
-            normalized[camel_key] = normalized[snake_key]
-
-    try:
-        return PredictionRequest.model_validate({"features": normalized})
-    except Exception as ex:  # pragma: no cover - defensive conversion path
-        raise HTTPException(status_code=422, detail=f"Invalid feature payload: {ex}") from ex
-
-
-@app.on_event("startup")
-def on_startup() -> None:
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Replaces the deprecated @app.on_event("startup") hook.
     manager.startup()
+    yield
+
+
+app = FastAPI(title="Denmark Road Condition ML Service", lifespan=lifespan)
+
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok", "service": "ml-service", "modelLoaded": str(manager.pipeline is not None)}
 
 
 @app.post("/predict-road-condition", response_model=PredictionResponse)
-async def predict_road_condition(request: Request) -> PredictionResponse:
-    try:
-        raw_body = await request.body()
-        print("Raw predict payload:", raw_body.decode("utf-8", errors="replace"))
-        payload = json.loads(raw_body.decode("utf-8"))
-    except Exception as ex:  # pragma: no cover - defensive parsing path
-        raise HTTPException(status_code=422, detail=f"Could not parse JSON body: {ex}") from ex
+def predict_road_condition(request: PredictionRequest) -> PredictionResponse:
+    # The old handler read the raw body and printed every payload to stdout,
+    # which put user route data into the server log on every single request.
+    if request.observation is not None:
+        observation = request.observation
+        try:
+            departure = datetime.fromisoformat(observation.departure_iso)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"departureIso is not a valid ISO-8601 timestamp: {observation.departure_iso}",
+            ) from exc
 
-    if not isinstance(payload, dict):
-        raise HTTPException(status_code=422, detail="JSON body must be an object.")
+        features = derive_features(
+            RouteObservation(
+                distance_km=observation.distance_km,
+                duration_min=observation.duration_min,
+                departure=departure,
+                urban_signal=observation.urban_signal,
+                temperature_c=observation.weather.temperature_c,
+                rainfall_mm=observation.weather.rainfall_mm,
+                humidity=observation.weather.humidity,
+                wind_speed_kmh=observation.weather.wind_speed_kmh,
+            ),
+            rng=None,
+        )
+        return manager.predict(features, weather_source="open-meteo")
 
-    normalized_request = _normalize_prediction_payload(payload)
-    return manager.predict(normalized_request)
+    if request.features is not None:
+        return manager.predict(request.features.model_dump(by_alias=False), weather_source="unknown")
+
+    raise HTTPException(
+        status_code=422,
+        detail="Send either an 'observation' object (preferred) or a fully derived 'features' object.",
+    )
 
 
 @app.post("/retrain", response_model=ModelInfoResponse)
