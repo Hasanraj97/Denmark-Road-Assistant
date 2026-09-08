@@ -10,7 +10,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 
-import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Service
 public class GeocodingService {
@@ -42,9 +42,13 @@ public class GeocodingService {
                 .body(JsonNode[].class);
 
         if (results == null || results.length == 0) {
+            // 404, not 502. Nothing is wrong with the geocoding service - the place
+            // simply does not match anything in Denmark. Reporting an ordinary typo
+            // as a "Bad Gateway" made the user think the server was broken.
             throw new ResponseStatusException(
-                    BAD_GATEWAY,
-                    "Could not match that place in Denmark. Try a more specific Denmark location or address."
+                    NOT_FOUND,
+                    "Could not match \"" + query + "\" to a place in Denmark. "
+                            + "Try a more specific Denmark town, address or postcode."
             );
         }
 

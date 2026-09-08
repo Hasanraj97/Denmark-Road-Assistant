@@ -60,6 +60,16 @@ public class MlServiceClient {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             ensureSuccess(response, message);
             return objectMapper.readValue(response.body(), responseType);
+        } catch (ResponseStatusException ex) {
+            // ensureSuccess has already built a precise message naming the status
+            // and body the ML service sent back. Catching it here as a plain
+            // Exception and re-wrapping it threw that detail away and replaced it
+            // with the generic fallback text, so the user never learned what the
+            // ML service actually said.
+            throw ex;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new ResponseStatusException(BAD_GATEWAY, message, ex);
         } catch (Exception ex) {
             throw new ResponseStatusException(BAD_GATEWAY, message, ex);
         }
@@ -80,6 +90,16 @@ public class MlServiceClient {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             ensureSuccess(response, message);
             return objectMapper.readValue(response.body(), responseType);
+        } catch (ResponseStatusException ex) {
+            // ensureSuccess has already built a precise message naming the status
+            // and body the ML service sent back. Catching it here as a plain
+            // Exception and re-wrapping it threw that detail away and replaced it
+            // with the generic fallback text, so the user never learned what the
+            // ML service actually said.
+            throw ex;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new ResponseStatusException(BAD_GATEWAY, message, ex);
         } catch (Exception ex) {
             throw new ResponseStatusException(BAD_GATEWAY, message, ex);
         }

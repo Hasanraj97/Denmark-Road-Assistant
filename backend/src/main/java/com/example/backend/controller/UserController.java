@@ -1,5 +1,6 @@
 package com.example.backend.controller;
 
+import com.example.backend.dto.AuthResponse;
 import com.example.backend.dto.UpdateProfileRequest;
 import com.example.backend.dto.UserResponse;
 import com.example.backend.entity.AppUser;
@@ -27,8 +28,16 @@ public class UserController {
         return userService.currentUser(user);
     }
 
+    /**
+     * Updates the signed-in user's profile.
+     *
+     * <p>Returns the same shape as login - a fresh token plus the user - because
+     * changing the email address invalidates the claims inside the old token. The
+     * frontend must store the returned token, or the header will keep showing the
+     * previous name.</p>
+     */
     @PutMapping("/me")
-    public UserResponse updateProfile(
+    public AuthResponse updateProfile(
             @AuthenticationPrincipal AppUser user,
             @Valid @RequestBody UpdateProfileRequest request
     ) {

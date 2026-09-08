@@ -9,7 +9,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -17,7 +16,18 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
-@Data
+/**
+ * A registered user.
+ *
+ * <p>This class used to carry Lombok's all-in-one data annotation. It was removed
+ * for two reasons. It generated a {@code toString()} covering every field,
+ * including {@code passwordHash}, so any log line or debugger that printed a user
+ * exposed the stored BCrypt hash. It also generated {@code equals()} and
+ * {@code hashCode()} across all fields, which is unsafe for a JPA entity whose
+ * fields change while it is attached to a persistence context. Every getter and
+ * setter this class actually uses is written out by hand below, and Lombok is no
+ * longer a dependency of the project at all.</p>
+ */
 @Entity
 @Table(name = "users")
 public class AppUser implements UserDetails {
