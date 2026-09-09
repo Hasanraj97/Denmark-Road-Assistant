@@ -69,12 +69,16 @@ function Require-PortFree {
 }
 
 function Start-Service-Logged {
-    param([string]$WorkDir, [string]$FileName, [string[]]$Args, [string]$LogName)
+    # NOTE: this parameter must NOT be called $Args. That is a reserved automatic
+    # variable in PowerShell - it holds whatever was passed to the enclosing
+    # function - so a parameter of that name never receives the caller's value and
+    # Start-Process fails with "argument is null, empty, or contains a null value".
+    param([string]$WorkDir, [string]$FileName, [string[]]$ProcessArgs, [string]$LogName)
 
     $out = Join-Path $LogDir "$LogName.log"
     $err = Join-Path $LogDir "$LogName.err.log"
 
-    $p = Start-Process -FilePath $FileName -ArgumentList $Args `
+    $p = Start-Process -FilePath $FileName -ArgumentList $ProcessArgs `
                        -WorkingDirectory $WorkDir -NoNewWindow -PassThru `
                        -RedirectStandardOutput $out -RedirectStandardError $err
     [void]$Started.Add($p)
@@ -141,7 +145,7 @@ try {
     Write-Host '     first start trains the model - this takes a few seconds' -ForegroundColor DarkGray
     Start-Service-Logged -WorkDir (Join-Path $Root 'ml-service') `
                          -FileName $VenvPy `
-                         -Args @('-m','uvicorn','app.main:app','--host','127.0.0.1','--port',"$MlPort") `
+                         -ProcessArgs @('-m','uvicorn','app.main:app','--host','127.0.0.1','--port',"$MlPort") `
                          -LogName 'ml-service' | Out-Null
     Wait-ForHttp -Url "http://127.0.0.1:$MlPort/health" -Name 'ML service' -Seconds 120 -LogName 'ml-service'
 
@@ -149,7 +153,7 @@ try {
     Say "2/3  Backend (port $BackendPort)"
     Start-Service-Logged -WorkDir (Join-Path $Root 'backend') `
                          -FileName 'cmd.exe' `
-                         -Args @('/c','mvnw.cmd','-q','spring-boot:run') `
+                         -ProcessArgs @('/c','mvnw.cmd','-q','spring-boot:run') `
                          -LogName 'backend' | Out-Null
     Wait-ForHttp -Url "http://127.0.0.1:$BackendPort/api/health" -Name 'Backend' -Seconds 180 -LogName 'backend'
 
@@ -157,7 +161,7 @@ try {
     Say "3/3  Frontend (port $FrontPort)"
     Start-Service-Logged -WorkDir (Join-Path $Root 'frontend') `
                          -FileName 'cmd.exe' `
-                         -Args @('/c','npm','start') `
+                         -ProcessArgs @('/c','npm','start') `
                          -LogName 'frontend' | Out-Null
     # NOTE: localhost, not 127.0.0.1. The Angular dev server binds to IPv6 only
     # ([::1]:4200), so an IPv4 health check never succeeds even though the

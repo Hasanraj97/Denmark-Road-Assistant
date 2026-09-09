@@ -874,3 +874,30 @@ roundabout exits and unknown manoeuvre types.
 `dto/RouteResponseDto.java`, `routing/RouteComputation.java`,
 `frontend/src/app/navigation.service.ts` (new),
 `frontend/src/app/route-analysis.page.{html,ts}`, `frontend/src/styles.css`
+
+### start-all.ps1 could not start anything at all
+
+**What you saw.** Running `.\start-all.ps1` printed the banner, said it was
+starting the ML service, and then immediately shut down again with:
+
+```
+Start-Process : Cannot validate argument on parameter 'ArgumentList'.
+The argument is null, empty, or an element of the argument collection contains a null value.
+At start-all.ps1:77
+```
+
+**Why.** The helper function took its command-line arguments in a parameter
+called `$Args`. That is a **reserved automatic variable** in PowerShell - it
+already holds whatever was passed to the enclosing function - so a parameter of
+that name never receives the caller's value. `Start-Process` was handed nothing
+and refused. The Bash script was unaffected, which is why this survived: the
+`.sh` version had been run end to end, but the `.ps1` had only been read, not
+executed. That was a gap in how it was verified, not just a typo.
+
+**Fix.** The parameter is renamed `$ProcessArgs`, at the declaration and all three
+call sites, with a comment recording why that name is forbidden.
+
+**Verified** by actually running `powershell -File start-all.ps1` and watching all
+three services come up.
+
+*Files:* `start-all.ps1`
