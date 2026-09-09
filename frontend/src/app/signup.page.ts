@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 import { AuthService } from './auth.service';
+import { describeError } from './error-message';
 
 @Component({
   selector: 'app-signup-page',
@@ -11,7 +13,7 @@ import { AuthService } from './auth.service';
   templateUrl: './signup.page.html',
   styleUrl: './login.page.css'
 })
-export class SignupPageComponent {
+export class SignupPageComponent implements OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
@@ -27,6 +29,13 @@ export class SignupPageComponent {
     password: ['', [Validators.required, Validators.minLength(8)]]
   });
 
+  private signupSubscription: Subscription | null = null;
+
+  ngOnDestroy(): void {
+    this.signupSubscription?.unsubscribe();
+    this.signupSubscription = null;
+  }
+
   protected signup(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -36,11 +45,12 @@ export class SignupPageComponent {
     this.errorMessage.set('');
     this.loading.set(true);
 
-    this.authService.signup(this.form.getRawValue()).subscribe({
+    this.signupSubscription?.unsubscribe();
+    this.signupSubscription = this.authService.signup(this.form.getRawValue()).subscribe({
       next: () => void this.router.navigateByUrl('/profile'),
-      error: (error) => {
+      error: (error: unknown) => {
         this.loading.set(false);
-        this.errorMessage.set(error?.error?.message ?? 'Signup failed. Please try again.');
+        this.errorMessage.set(describeError(error, 'Signup failed. Please try again.'));
       },
       complete: () => this.loading.set(false)
     });

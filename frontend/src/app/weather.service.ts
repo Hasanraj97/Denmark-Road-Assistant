@@ -15,6 +15,27 @@ export interface WeatherHour {
   isDepartureMatch: boolean;
 }
 
+/**
+ * The weather reading the backend actually fed to the road-condition model.
+ *
+ * <p>This is separate from the hourly strip above, which this app fetches from
+ * Open-Meteo itself for display. `source` is `"open-meteo"` for a live forecast
+ * or `"seasonal-estimate"` when the backend could not reach Open-Meteo and fell
+ * back to a long-run seasonal average - the UI has to say which, or the user is
+ * shown a fallback number and left to assume it is a forecast.</p>
+ */
+export interface ModelWeatherReading {
+  temperatureC: number;
+  rainfallMm: number;
+  humidity: number;
+  windSpeedKmh: number;
+  source: string;
+  live: boolean;
+}
+
+export const WEATHER_SOURCE_LIVE = 'open-meteo';
+export const WEATHER_SOURCE_FALLBACK = 'seasonal-estimate';
+
 interface OpenMeteoHourlyResponse {
   hourly: {
     time: string[];

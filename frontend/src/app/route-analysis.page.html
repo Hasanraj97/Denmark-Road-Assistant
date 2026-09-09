@@ -1,17 +1,21 @@
 <main class="shell">
   <header class="page-header">
     <div class="hero-intro">
-      <span class="hero-kicker">Synthetic Denmark travel advisory</span>
+      <span class="hero-kicker">Real weather, synthetic road model</span>
       <h1>Denmark Road Assistant</h1>
       <p class="page-subtitle">
         Predict likely road conditions, travel risk, and whether you should
         leave early.
       </p>
+      <p class="hero-disclosure">{{ disclaimer() }}</p>
     </div>
   </header>
 
-  @if (errorMessage()) {
-    <div class="error-banner">{{ errorMessage() }}</div>
+  @if (modelState() === 'failed') {
+    <div class="error-banner">
+      <strong>Model service</strong>
+      <span>{{ modelError() }}</span>
+    </div>
   }
 
   <section class="dashboard-grid">
@@ -101,6 +105,9 @@
               @if (locationMessage()) {
                 <p class="location-success">{{ locationMessage() }}</p>
               }
+              @if (locationError()) {
+                <p class="location-failure">Location: {{ locationError() }}</p>
+              }
             </div>
           </div>
         </div>
@@ -108,6 +115,13 @@
         <button type="button" class="analyze-button" [disabled]="!canAnalyze()" (click)="analyzeRoute()">
           {{ analyzing() ? 'Analyzing Route...' : 'Analyze Route' }}
         </button>
+
+        @if (routeState() === 'failed') {
+          <p class="stage-failure">
+            <strong>Route not found.</strong>
+            {{ routeError() }}
+          </p>
+        }
       </section>
 
       <section class="card map-card">
@@ -122,18 +136,31 @@
           }
         </div>
 
-        <div class="map-footer-grid desktop-map-footer">
+        <div class="map-footer-grid explainability-footer">
           <article class="mini-card">
             <h2>What Shaped This Advisory</h2>
-            <p class="mini-card-intro">A simpler view of the route factors the prediction relied on most.</p>
+            <p class="mini-card-intro">
+              The route factors the road-condition model relied on most. The weather values here are the real
+              Open-Meteo forecast; the grade they produce is modelled.
+            </p>
 
-            @if (analysis(); as result) {
+            @if (routeState() === 'loading') {
+              <p class="empty-text">Finding the route and grading its road conditions...</p>
+            } @else if (analysis()) {
               <div class="inputs-list compact-inputs-list">
                 @for (feature of predictionInputs(); track feature.label) {
                   <div class="input-item">
                     <span>{{ feature.label }}</span>
                     <strong>{{ feature.value }}</strong>
                     <small>{{ feature.help }}</small>
+                  </div>
+                }
+
+                @for (influence of influentialFeatures(); track influence.feature) {
+                  <div class="input-item">
+                    <span>{{ formatFeatureName(influence.feature) }}</span>
+                    <strong>{{ influence.value }}</strong>
+                    <small>{{ influence.impact }}</small>
                   </div>
                 }
               </div>
@@ -149,7 +176,9 @@
       <section class="card overview-card">
         <h2>Route Overview</h2>
 
-        @if (analysis(); as result) {
+        @if (routeState() === 'loading') {
+          <p class="empty-text">Looking up both places and building the road route...</p>
+        } @else if (analysis(); as result) {
           <div class="overview-grid">
             <div>
               <span>Origin</span>
@@ -176,6 +205,8 @@
               <strong>{{ result.route.durationMinutes }} min</strong>
             </div>
           </div>
+        } @else if (routeState() === 'failed') {
+          <p class="stage-failure"><strong>Route lookup failed.</strong> {{ routeError() }}</p>
         } @else {
           <p class="empty-text">Analyze a route to see route details here.</p>
         }
@@ -185,6 +216,7 @@
         [hours]="weatherHours()"
         [loading]="weatherLoading()"
         [error]="weatherError()"
+        [modelWeather]="modelWeather()"
       />
 
       <section class="card advisory-card">
@@ -198,12 +230,19 @@
           }
         </div>
 
-        @if (analysis(); as result) {
+        @if (predictionState() === 'loading') {
+          <p class="empty-text">Grading road conditions with the trained model...</p>
+        } @else if (analysis(); as result) {
           <div class="advisory-meta">
             <span class="condition-pill" [ngClass]="conditionClass(result.prediction.roadConditionLabel)">
               {{ result.prediction.roadConditionLabel }}
             </span>
             <span class="confidence-pill">Confidence</span>
+            @if (result.syntheticModel) {
+              <span class="model-pill" title="Grade produced by a model trained on generated data">
+                Modelled grade
+              </span>
+            }
           </div>
 
           <h3>
@@ -218,9 +257,15 @@
 
           <div class="advisory-tags">
             @for (tag of advisoryTags(); track tag) {
-              <span>{{ tag }}</span>
+              <span>{{ formatFeatureName(tag) }}</span>
             }
           </div>
+
+          <p class="advisory-disclosure">{{ result.disclaimer }}</p>
+        } @else if (predictionState() === 'failed') {
+          <p class="stage-failure"><strong>Road-condition grading failed.</strong> {{ predictionError() }}</p>
+        } @else if (predictionState() === 'skipped') {
+          <p class="empty-text">{{ predictionError() }}</p>
         } @else {
           <p class="empty-text">
             Run a route analysis to get the assistant-style travel advisory.

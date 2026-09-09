@@ -1,0 +1,15 @@
+# Test-only dependencies for the ML service.
+#
+# Install on top of requirements.txt, into the same virtual environment:
+#     cd ml-service
+#     ./.venv/Scripts/python.exe -m pip install -r requirements-dev.txt
+#
+# Then run the suite from the ml-service directory:
+#     ./.venv/Scripts/python.exe -m pytest -q
+#
+# The suite makes no network calls: fastapi.testclient drives the ASGI app
+# in-process, and httpx is the transport it is built on.
+-r requirements.txt
+
+pytest==9.1.1
+httpx==0.28.1

@@ -1,7 +1,7 @@
 <section class="weather-card">
   <div class="weather-card-head">
     <div>
-      <p class="weather-eyebrow">Open-Meteo forecast</p>
+      <p class="weather-eyebrow">Live Open-Meteo forecast</p>
       <h2>Departure Hour Weather</h2>
     </div>
     <span class="weather-note">Next 10 hours</span>
@@ -61,12 +61,34 @@
     </div>
 
     <p class="weather-source">
-      Weather from Open-Meteo. The spotlight summarizes the hour closest to the selected departure time.
+      Real measured forecast from Open-Meteo - not generated. The spotlight summarizes the hour closest to
+      the selected departure time.
     </p>
   } @else {
     <div class="weather-fallback">
       <strong>No forecast yet</strong>
       <p>Analyze a route to load weather for the route area.</p>
+    </div>
+  }
+
+  @if (modelWeather(); as reading) {
+    <div class="weather-model-source" [class.weather-model-source-fallback]="!modelWeatherIsLive()">
+      @if (modelWeatherIsLive()) {
+        <strong>Fed to the model: live Open-Meteo forecast</strong>
+        <p>
+          The road-condition grade was computed from a real forecast at the route midpoint:
+          {{ reading.temperatureC | number: '1.0-1' }}&deg;C, {{ reading.rainfallMm | number: '1.0-1' }} mm rain,
+          {{ humidityPercent(reading.humidity) }}% humidity, {{ reading.windSpeedKmh | number: '1.0-0' }} km/h wind.
+        </p>
+      } @else {
+        <strong>Fed to the model: seasonal estimate, not a forecast</strong>
+        <p>
+          Open-Meteo could not be reached from the server, so the grade used a long-run Danish seasonal average
+          ({{ reading.temperatureC | number: '1.0-1' }}&deg;C, {{ reading.rainfallMm | number: '1.0-1' }} mm rain,
+          {{ humidityPercent(reading.humidity) }}% humidity, {{ reading.windSpeedKmh | number: '1.0-0' }} km/h wind)
+          instead of the live forecast. Treat the grade as weaker than usual.
+        </p>
+      }
     </div>
   }
 </section>

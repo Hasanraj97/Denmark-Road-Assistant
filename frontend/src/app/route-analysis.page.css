@@ -64,126 +64,6 @@
   overflow-x: clip;
 }
 
-.top-menu {
-  position: fixed;
-  top: 22px;
-  left: 0;
-  right: 0;
-  z-index: 30;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-  transition: top 420ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.top-menu::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(1360px, calc(100% - 56px));
-  height: 76px;
-  border-radius: 999px;
-  border: 1px solid rgba(14, 35, 68, 0.38);
-  background: linear-gradient(180deg, rgba(16, 39, 76, 0.9) 0%, rgba(21, 53, 102, 0.82) 100%);
-  box-shadow: 0 18px 42px rgba(10, 24, 47, 0.3);
-  backdrop-filter: blur(18px) saturate(1.08);
-  will-change: width, border-radius, background, box-shadow;
-  transition:
-    width 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-radius 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    background 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 420ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.top-menu-inner {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 24px;
-  width: min(1360px, calc(100% - 56px));
-  padding: 14px 20px;
-  pointer-events: auto;
-}
-
-.top-menu-expanded {
-  top: 0;
-}
-
-.top-menu-expanded::before {
-  width: 100vw;
-  border-radius: 0;
-  border-left: 0;
-  border-right: 0;
-  border-top: 0;
-  border-color: rgba(14, 35, 68, 0.24);
-  background: linear-gradient(180deg, rgba(11, 28, 56, 0.96) 0%, rgba(17, 43, 83, 0.92) 100%);
-  box-shadow: 0 16px 36px rgba(10, 24, 47, 0.24);
-}
-
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: #f5f9ff;
-  letter-spacing: -0.03em;
-}
-
-.brand-logo {
-  width: 44px;
-  height: 44px;
-  flex: 0 0 auto;
-  object-fit: contain;
-  filter: drop-shadow(0 10px 24px rgba(42, 111, 190, 0.16));
-}
-
-.menu-links {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.menu-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  height: 48px;
-  padding: 0 18px;
-  border: 1px solid rgba(185, 214, 255, 0.18);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #eef5ff;
-  font-size: 0.96rem;
-  font-weight: 700;
-  box-shadow: 0 8px 22px rgba(12, 29, 56, 0.16);
-  cursor: pointer;
-}
-
-.menu-link svg {
-  width: 18px;
-  height: 18px;
-  stroke: currentColor;
-  stroke-width: 2;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.menu-link-primary {
-  background: linear-gradient(135deg, rgba(125, 217, 255, 0.96) 0%, rgba(84, 170, 255, 0.96) 100%);
-  color: #12325d;
-  border-color: rgba(255, 255, 255, 0.35);
-}
-
 .page-header {
   display: flex;
   justify-content: center;
@@ -240,39 +120,11 @@ p {
   text-wrap: balance;
 }
 
-.header-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.demo-pill,
-.ghost-button,
 .condition-pill,
 .confidence-pill,
 .confidence-chip,
-.sample-chip,
 .advisory-tags span {
   border-radius: 999px;
-}
-
-.demo-pill {
-  padding: 12px 20px;
-  background: linear-gradient(135deg, var(--teal) 0%, var(--teal-deep) 100%);
-  color: white;
-  font-size: 0.95rem;
-  font-weight: 600;
-  box-shadow: 0 10px 24px rgba(23, 122, 114, 0.18);
-}
-
-.ghost-button {
-  border: 0;
-  padding: 12px 22px;
-  background: rgba(255, 255, 255, 0.75);
-  color: var(--ink);
-  font-size: 0.95rem;
-  box-shadow: 0 10px 24px rgba(33, 51, 66, 0.08);
-  cursor: pointer;
 }
 
 .dashboard-grid {
@@ -515,22 +367,6 @@ p {
   cursor: pointer;
 }
 
-.sample-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.sample-chip {
-  border: 1px solid rgba(23, 122, 114, 0.18);
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--teal-deep);
-  padding: 10px 14px;
-  font-size: 0.86rem;
-  cursor: pointer;
-}
-
 .map-frame {
   position: relative;
   overflow: hidden;
@@ -567,7 +403,7 @@ p {
   max-width: 100%;
 }
 
-.desktop-map-footer {
+.explainability-footer {
   display: grid;
 }
 
@@ -849,6 +685,67 @@ p {
   color: var(--red);
 }
 
+.hero-disclosure {
+  max-width: 660px;
+  margin-top: 4px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(42, 111, 190, 0.16);
+  background: rgba(255, 255, 255, 0.62);
+  color: #41597a;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.model-pill {
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px dashed rgba(42, 111, 190, 0.5);
+  background: rgba(232, 243, 255, 0.8);
+  color: #1d4f91;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.advisory-disclosure {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.stage-failure {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(211, 79, 69, 0.1);
+  color: var(--red-deep);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.stage-failure strong {
+  display: block;
+  color: var(--red);
+}
+
+.location-failure {
+  margin: 0;
+  color: var(--red);
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.error-banner strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--red-deep);
+}
+
 button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -858,11 +755,6 @@ button:disabled {
   .shell {
     width: min(100% - 32px, 1360px);
     padding-top: 132px;
-  }
-
-  .top-menu::before,
-  .top-menu-inner {
-    width: min(100% - 32px, 1360px);
   }
 
   .dashboard-grid {
@@ -886,72 +778,6 @@ button:disabled {
   .shell {
     width: calc(100% - 18px);
     padding-top: 186px;
-  }
-
-  .top-menu {
-    top: 12px;
-  }
-
-  .top-menu::before {
-    width: min(100% - 18px, 1360px);
-    border-radius: 28px;
-    height: 154px;
-  }
-
-  .top-menu-inner {
-    width: min(100% - 18px, 1360px);
-    padding: 14px;
-    gap: 12px;
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .top-menu-expanded {
-    top: 0;
-  }
-
-  .top-menu-expanded::before {
-    width: 100vw;
-    border-radius: 0;
-  }
-
-  .top-menu-expanded .top-menu-inner {
-    width: 100%;
-    padding: 14px 16px;
-  }
-
-  .brand-mark {
-    width: 100%;
-    justify-content: center;
-    text-align: center;
-    font-size: 0.96rem;
-    gap: 10px;
-  }
-
-  .brand-mark span {
-    white-space: normal;
-  }
-
-  .menu-links {
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .menu-link {
-    width: 100%;
-    min-width: 0;
-    justify-content: center;
-    height: 44px;
-    padding: 0 10px;
-    font-size: 0.88rem;
-  }
-
-  .menu-link span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .page-header,
@@ -1041,15 +867,6 @@ button:disabled {
     max-width: 100%;
   }
 
-  .sample-row {
-    gap: 8px;
-  }
-
-  .sample-chip {
-    flex: 1 1 100%;
-    text-align: center;
-  }
-
   .map-canvas {
     min-height: 320px;
   }
@@ -1067,8 +884,13 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
-  .desktop-map-footer {
-    display: none;
+  /* "What Shaped This Advisory" used to be display:none here, which meant the
+     one section that explains how the grade was reached was hidden on every
+     phone-sized screen - and the Android app is always phone-sized, so it was
+     never visible there at all. It stays, laid out as a single column. */
+  .explainability-footer {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .right-column {
@@ -1107,43 +929,6 @@ button:disabled {
   .shell {
     width: calc(100% - 14px);
     padding-top: 206px;
-  }
-
-  .top-menu::before {
-    width: min(100% - 14px, 1360px);
-    height: 174px;
-  }
-
-  .top-menu-inner {
-    width: min(100% - 14px, 1360px);
-    padding: 12px;
-  }
-
-  .brand-logo {
-    width: 38px;
-    height: 38px;
-  }
-
-  .brand-mark {
-    gap: 8px;
-    font-size: 0.84rem;
-  }
-
-  .menu-links {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-  }
-
-  .menu-link {
-    height: 40px;
-    padding: 0 8px;
-    font-size: 0.78rem;
-    gap: 6px;
-  }
-
-  .menu-link svg {
-    width: 15px;
-    height: 15px;
   }
 
   .hero-kicker {

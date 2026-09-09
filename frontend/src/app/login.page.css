@@ -47,12 +47,19 @@ p {
   line-height: 1.7;
 }
 
-.auth-error {
+.auth-error,
+.auth-notice {
   margin-top: 18px;
   padding: 14px 16px;
   border-radius: 18px;
   background: rgba(255, 231, 221, 0.82);
   color: #d34f45;
+}
+
+.auth-notice {
+  background: rgba(219, 234, 254, 0.85);
+  color: #1d4f91;
+  line-height: 1.5;
 }
 
 .auth-form {

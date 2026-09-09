@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, from, switchMap, tap } from 'rxjs';
+import { Observable, Subscription, from, switchMap, tap } from 'rxjs';
 
 import { BackendUrlService } from './backend-url.service';
 
@@ -34,7 +34,7 @@ export interface UpdateProfilePayload {
   address: string;
 }
 
-interface AuthResponse {
+export interface AuthResponse {
   token: string;
   user: UserProfile;
 }
@@ -71,20 +71,39 @@ export class AuthService {
     );
   }
 
-  updateProfile(payload: UpdateProfilePayload): Observable<UserProfile> {
+  /**
+   * Saves the profile and adopts the token that comes back with it.
+   *
+   * <p>{@code PUT /api/users/me} answers with the same shape as login -
+   * {@code {token, user}} - because changing the email address invalidates the
+   * claims in the token the caller is holding. This method used to be typed as
+   * returning a bare {@code UserProfile} and called {@code storeUser}, keeping
+   * the stale token, so the header kept showing the previous name until the
+   * next full sign-in.</p>
+   */
+  updateProfile(payload: UpdateProfilePayload): Observable<AuthResponse> {
     return from(this.backendUrl.ensureConnected()).pipe(
-      switchMap(() => this.http.put<UserProfile>(this.backendUrl.apiUrl('/users/me'), payload)),
-      tap((user) => this.storeUser(user))
+      switchMap(() => this.http.put<AuthResponse>(this.backendUrl.apiUrl('/users/me'), payload)),
+      tap((response) => this.storeSession(response))
     );
   }
 
-  bootstrapSession(): void {
+  /**
+   * Confirms on startup that the stored token still works.
+   *
+   * <p>This no longer signs the user out on any error. A 401 - the one answer
+   * that really does mean the session is over - is handled once, in the auth
+   * interceptor. Signing out here as well meant that a backend that was simply
+   * not running yet, or a flaky connection on a phone, silently threw away a
+   * perfectly valid session.</p>
+   */
+  bootstrapSession(): Subscription | null {
     if (!this.getToken()) {
-      return;
+      return null;
     }
 
-    this.getCurrentUser().subscribe({
-      error: () => this.logout(true)
+    return this.getCurrentUser().subscribe({
+      error: () => undefined
     });
   }
 

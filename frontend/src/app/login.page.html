@@ -4,6 +4,12 @@
     <h1>Welcome back</h1>
     <p>Log in to save your route profile and manage your Denmark Road Assistant account.</p>
 
+    @if (sessionExpired()) {
+      <div class="auth-notice">
+        Your session has expired, so you were signed out. Log in again to carry on where you left off.
+      </div>
+    }
+
     @if (errorMessage()) {
       <div class="auth-error">{{ errorMessage() }}</div>
     }

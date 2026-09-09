@@ -1,17 +1,28 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  HostListener,
+  OnDestroy,
+  ViewChild,
+  computed,
+  inject,
+  signal
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import * as L from 'leaflet';
 
 import { AuthService } from './auth.service';
 import { BackendUrlService } from './backend-url.service';
+import { describeError, statusOf } from './error-message';
 import { FeedbackCardComponent } from './feedback-card.component';
 import { FeedbackResponse } from './history.service';
 import { LocationService } from './location.service';
 import { WeatherWidgetComponent } from './weather-widget.component';
-import { WeatherHour, WeatherService } from './weather.service';
+import { ModelWeatherReading, WeatherHour, WeatherService } from './weather.service';
 
 interface RoutePoint {
   lat: number;
@@ -48,6 +59,11 @@ interface RouteFeatures {
   vehicleLoadFactor: number;
 }
 
+/**
+ * One reason the model gave for its grade. `impact` is a measured explanation
+ * of what that value did to this prediction, not a generic description of the
+ * feature, so it is worth showing in full.
+ */
 interface FeatureInfluence {
   feature: string;
   value: string;
@@ -61,22 +77,38 @@ interface Prediction {
   advisory: string;
   influentialFeatures: FeatureInfluence[];
   classProbabilities: Record<string, number>;
+  features: RouteFeatures;
   syntheticPrediction: boolean;
 }
 
+/**
+ * The response of POST /api/route-and-predict.
+ *
+ * <p>`syntheticModel` replaces the old `syntheticDemo`. The rename matters: the
+ * flag is about the road-condition <em>model</em>, which is trained on generated
+ * data. It is not about the weather, which is a real Open-Meteo forecast and is
+ * reported separately in `weather` along with the source it came from.</p>
+ */
 interface RouteAnalysisResponse {
   route: RouteInfo;
   features: RouteFeatures;
   prediction: Prediction;
+  weather: ModelWeatherReading;
   historyId: number | null;
-  syntheticDemo: boolean;
+  syntheticModel: boolean;
   disclaimer: string;
 }
 
+/**
+ * What GET /api/model-info now returns.
+ *
+ * <p>`datasetPath` and `modelPath` used to be here. They were removed from the
+ * backend because they exposed absolute paths from the developer's own machine
+ * on a public endpoint, so they are gone from this interface too rather than
+ * sitting here as fields that are always undefined.</p>
+ */
 interface ModelInfo {
   modelName: string;
-  datasetPath: string;
-  modelPath: string;
   sampleCount: number;
   accuracy: number;
   labels: string[];
@@ -110,13 +142,21 @@ interface PredictionInputCard {
   help: string;
 }
 
+type LoadState = 'idle' | 'loading' | 'ready' | 'failed' | 'skipped';
+
+/** Shown before the first analysis, when the server has not sent its own wording yet. */
+const DEFAULT_DISCLAIMER =
+  'The weather in this advisory is a real Open-Meteo forecast. The road-condition grade comes ' +
+  'from a model trained on generated data, so treat it as an illustration of the method rather ' +
+  'than a measurement of Danish roads.';
+
 @Component({
   selector: 'app-route-analysis-page',
   imports: [CommonModule, FormsModule, WeatherWidgetComponent, FeedbackCardComponent],
   templateUrl: './route-analysis.page.html',
   styleUrl: './route-analysis.page.css'
 })
-export class RouteAnalysisPageComponent implements AfterViewInit {
+export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly backendUrlService = inject(BackendUrlService);
@@ -133,17 +173,32 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
   protected readonly analyzing = signal(false);
   protected readonly retraining = signal(false);
   protected readonly locating = signal(false);
+
+  // Each part of the page reports its own state. They used to share a single
+  // anonymous error banner, so a mistyped town name, an unreachable ML service,
+  // a refused geolocation prompt and a failed Open-Meteo call all produced the
+  // same red box and the user could not tell which of them had happened.
+  protected readonly routeState = signal<LoadState>('idle');
+  protected readonly routeError = signal('');
+  protected readonly predictionState = signal<LoadState>('idle');
+  protected readonly predictionError = signal('');
   protected readonly weatherLoading = signal(false);
   protected readonly weatherError = signal('');
   protected readonly weatherHours = signal<WeatherHour[]>([]);
-  protected readonly errorMessage = signal('');
+  protected readonly modelState = signal<LoadState>('idle');
+  protected readonly modelError = signal('');
+  protected readonly locationError = signal('');
   protected readonly locationMessage = signal('');
+
   protected readonly statusMessage = signal('Preparing Denmark map...');
   protected readonly analysis = signal<RouteAnalysisResponse | null>(null);
   protected readonly latestFeedback = signal<FeedbackResponse | null>(null);
   protected readonly modelInfo = signal<ModelInfo | null>(null);
   protected readonly advisoryHistory = signal<AdvisoryHistoryItem[]>([]);
   protected readonly isLoggedIn = computed(() => this.authService.isLoggedIn());
+  protected readonly disclaimer = computed(() => this.analysis()?.disclaimer || DEFAULT_DISCLAIMER);
+  protected readonly modelWeather = computed(() => this.analysis()?.weather ?? null);
+
   protected readonly sampleRoutes: SampleRoute[] = [
     { origin: 'Copenhagen', destination: 'Roskilde' },
     { origin: 'Odense', destination: 'Aarhus' },
@@ -160,14 +215,46 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
   protected readonly topFeatureImportances = computed(() =>
     Object.entries(this.modelInfo()?.featureImportances ?? {}).slice(0, 6)
   );
+
   private map?: L.Map;
   private routeLayer?: L.Polyline;
   private markerLayer?: L.LayerGroup;
   private userLocationMarker?: L.Marker;
+  private resizeTimeout?: number;
+  private destroyed = false;
 
   ngAfterViewInit(): void {
     this.initializeMap();
     void this.initializeBackendConnection();
+  }
+
+  /**
+   * Tears the Leaflet map down.
+   *
+   * <p>The map was never destroyed. Leaflet attaches listeners to `window` and
+   * `document` as well as to the container, so every visit to this route left
+   * another live map behind: the tile layers kept their handlers, the pending
+   * `invalidateSize` timer still fired into a detached component, and memory
+   * grew for as long as the app stayed open. This is the first `ngOnDestroy` in
+   * the application.</p>
+   */
+  ngOnDestroy(): void {
+    this.destroyed = true;
+
+    if (this.resizeTimeout !== undefined) {
+      window.clearTimeout(this.resizeTimeout);
+      this.resizeTimeout = undefined;
+    }
+
+    this.userLocationMarker?.remove();
+    this.userLocationMarker = undefined;
+    this.routeLayer?.remove();
+    this.routeLayer = undefined;
+    this.markerLayer?.clearLayers();
+    this.markerLayer = undefined;
+
+    this.map?.remove();
+    this.map = undefined;
   }
 
   @HostListener('window:resize')
@@ -176,9 +263,12 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
   }
 
   protected async analyzeRoute(): Promise<void> {
-    this.errorMessage.set('');
     this.analyzing.set(true);
-    this.statusMessage.set('Analyzing synthetic Denmark road conditions...');
+    this.routeState.set('loading');
+    this.routeError.set('');
+    this.predictionState.set('loading');
+    this.predictionError.set('');
+    this.statusMessage.set('Finding the route and grading its road conditions...');
 
     try {
       await this.backendUrlService.ensureConnected();
@@ -190,42 +280,51 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
         })
       );
 
+      if (this.destroyed) {
+        return;
+      }
+
       this.analysis.set(response);
       this.latestFeedback.set(null);
+      this.routeState.set('ready');
+      this.predictionState.set('ready');
       this.drawRoute(response.route);
       await this.loadWeather(response.route);
-      this.statusMessage.set('Synthetic advisory ready.');
-      this.advisoryHistory.update((history) => [
-        {
-          timestamp: new Intl.DateTimeFormat('en-GB', {
-            hour: '2-digit',
-            minute: '2-digit',
-            day: '2-digit',
-            month: 'short'
-          }).format(new Date()),
-          origin: response.route.originLabel,
-          destination: response.route.destinationLabel,
-          label: response.prediction.roadConditionLabel,
-          advisory: response.prediction.advisory
-        },
-        ...history
-      ].slice(0, 5));
+      this.statusMessage.set('Advisory ready: real forecast, modelled road grade.');
+      this.advisoryHistory.update((history) =>
+        [
+          {
+            timestamp: new Intl.DateTimeFormat('en-GB', {
+              hour: '2-digit',
+              minute: '2-digit',
+              day: '2-digit',
+              month: 'short'
+            }).format(new Date()),
+            origin: response.route.originLabel,
+            destination: response.route.destinationLabel,
+            label: response.prediction.roadConditionLabel,
+            advisory: response.prediction.advisory
+          },
+          ...history
+        ].slice(0, 5)
+      );
     } catch (error) {
       this.clearRoute();
       this.analysis.set(null);
       this.latestFeedback.set(null);
       this.weatherHours.set([]);
       this.weatherError.set('');
-      this.statusMessage.set('No synthetic advisory available yet.');
-      this.errorMessage.set(this.extractErrorMessage(error));
+      this.statusMessage.set('No advisory available yet.');
+      this.reportAnalysisFailure(error);
     } finally {
       this.analyzing.set(false);
     }
   }
 
   protected async retrainModel(): Promise<void> {
-    this.errorMessage.set('');
     this.retraining.set(true);
+    this.modelState.set('loading');
+    this.modelError.set('');
 
     try {
       await this.backendUrlService.ensureConnected();
@@ -233,9 +332,11 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
         this.http.post<ModelInfo>(this.backendUrlService.apiUrl('/retrain-model'), {})
       );
       this.modelInfo.set(info);
-      this.statusMessage.set('Synthetic model retrained successfully.');
+      this.modelState.set('ready');
+      this.statusMessage.set('Road-condition model retrained on freshly generated data.');
     } catch (error) {
-      this.errorMessage.set(this.extractErrorMessage(error));
+      this.modelState.set('failed');
+      this.modelError.set(describeError(error, 'The road-condition model could not be retrained.'));
     } finally {
       this.retraining.set(false);
     }
@@ -254,7 +355,7 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
   }
 
   protected async useMyLocation(): Promise<void> {
-    this.errorMessage.set('');
+    this.locationError.set('');
     this.locationMessage.set('');
     this.locating.set(true);
 
@@ -264,8 +365,11 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
       this.showUserLocation(position);
       this.locationMessage.set('Location detected and origin updated.');
     } catch (error) {
-      this.errorMessage.set(
-        error instanceof Error ? error.message : 'Unable to use your current location right now.'
+      // Its own message, next to its own button. This used to overwrite the
+      // shared banner, so a denied location permission looked exactly like a
+      // failed route analysis.
+      this.locationError.set(
+        describeError(error, 'Unable to use your current location right now.')
       );
     } finally {
       this.locating.set(false);
@@ -311,6 +415,11 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
     return prediction.influentialFeatures.slice(0, 3).map((feature) => feature.feature);
   }
 
+  /** The model's own reasons for this grade, with the measured impact of each. */
+  protected influentialFeatures(): FeatureInfluence[] {
+    return this.analysis()?.prediction.influentialFeatures ?? [];
+  }
+
   protected riskSignals(): RiskSignal[] {
     const features = this.analysis()?.features;
     if (!features) {
@@ -328,13 +437,13 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
         label: 'Safety disruption risk',
         value: features.accidentRiskScore.toFixed(2),
         meter: Math.round(features.accidentRiskScore * 100),
-        summary: 'A synthetic indicator of how much caution the trip may need.'
+        summary: 'A modelled indicator of how much caution the trip may need.'
       },
       {
         label: 'Weather disruption',
         value: features.weatherRisk.toFixed(2),
         meter: Math.round(features.weatherRisk * 100),
-        summary: 'Estimated chance that weather could slow or complicate the drive.'
+        summary: 'How much the real forecast for your departure hour could slow the drive.'
       },
       {
         label: 'Urban delay potential',
@@ -346,7 +455,7 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
         label: 'Rain outlook',
         value: `${features.rainfallMm.toFixed(1)} mm`,
         meter: Math.min(100, Math.round((features.rainfallMm / 10) * 100)),
-        summary: 'Estimated rainfall level tied to the synthetic weather scenario.'
+        summary: 'Rainfall in the departure hour, taken from the Open-Meteo forecast.'
       }
     ];
   }
@@ -371,7 +480,7 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
       {
         label: 'Weather disruption',
         value: `${Math.round(features.weatherRisk * 100)}%`,
-        help: 'Summarizes how much weather could interfere with the trip experience.'
+        help: 'How much the real Open-Meteo forecast for your departure hour could interfere with the trip.'
       }
     ];
   }
@@ -402,6 +511,10 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
     }
 
     return `${value}`;
+  }
+
+  protected formatFeatureName(key: string): string {
+    return key.replaceAll('_', ' ');
   }
 
   protected formatSelectedTime(value: string | undefined): string {
@@ -445,16 +558,26 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
     this.markerLayer = L.layerGroup().addTo(this.map);
     this.invalidateMapSize();
     this.loadingMap.set(false);
-    this.statusMessage.set('Map ready. Analyze a Denmark route to see the synthetic advisory.');
+    this.statusMessage.set('Map ready. Analyze a Denmark route to see the advisory.');
   }
 
   private async initializeBackendConnection(): Promise<void> {
+    this.modelState.set('loading');
+
     try {
       await this.backendUrlService.ensureConnected();
       await this.loadModelInfo();
-    } catch {
-      this.errorMessage.set(
-        'Backend discovery failed. Make sure the Spring Boot backend and Python ML service are running.'
+    } catch (error) {
+      if (this.destroyed) {
+        return;
+      }
+
+      this.modelState.set('failed');
+      this.modelError.set(
+        describeError(
+          error,
+          'Could not reach the backend. Start the Spring Boot backend and the Python ml-service, then reload.'
+        )
       );
     }
   }
@@ -463,8 +586,51 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
     const info = await firstValueFrom(
       this.http.get<ModelInfo>(this.backendUrlService.apiUrl('/model-info'))
     );
+
+    if (this.destroyed) {
+      return;
+    }
+
     this.modelInfo.set(info);
-    this.errorMessage.set('');
+    this.modelState.set('ready');
+    this.modelError.set('');
+  }
+
+  /**
+   * Decides which half of the analysis to blame.
+   *
+   * <p>Route building and grading happen in one backend call, so the split is
+   * made from what the failure actually says: the ML client's messages name the
+   * model service, and a place that cannot be matched comes back as 404 from
+   * geocoding. When the route could not be built the prediction was never
+   * attempted, and the page says exactly that instead of showing a second
+   * failure the user did not cause.</p>
+   */
+  private reportAnalysisFailure(error: unknown): void {
+    const message = describeError(error, 'The route analysis could not be completed.');
+    const lower = message.toLowerCase();
+    const blameModel =
+      lower.includes('model service') ||
+      lower.includes('ml service') ||
+      lower.includes('road-condition model') ||
+      lower.includes('predict');
+
+    if (blameModel) {
+      this.routeState.set('ready');
+      this.routeError.set('');
+      this.predictionState.set('failed');
+      this.predictionError.set(message);
+      return;
+    }
+
+    this.routeState.set('failed');
+    this.routeError.set(
+      statusOf(error) === 404
+        ? `${message} Check the spelling of both places.`
+        : message
+    );
+    this.predictionState.set('skipped');
+    this.predictionError.set('Not attempted, because there was no route to grade.');
   }
 
   private drawRoute(route: RouteInfo): void {
@@ -528,21 +694,6 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
     this.map.setView([position.lat, position.lng], 13);
   }
 
-  private extractErrorMessage(error: unknown): string {
-    if (error instanceof HttpErrorResponse) {
-      const body = error.error;
-      if (typeof body === 'string' && body.length > 0) {
-        return body;
-      }
-      if (body?.message) {
-        return body.message;
-      }
-      return `Request failed with status ${error.status}.`;
-    }
-
-    return 'Something went wrong while analyzing the route.';
-  }
-
   private async loadWeather(route: RouteInfo): Promise<void> {
     const weatherPoint = this.routeWeatherPoint(route);
     if (!weatherPoint) {
@@ -562,10 +713,17 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
           this.selectedDepartureTime()
         )
       );
+
+      if (this.destroyed) {
+        return;
+      }
+
       this.weatherHours.set(hours);
-    } catch {
+    } catch (error) {
       this.weatherHours.set([]);
-      this.weatherError.set('Open-Meteo forecast could not be loaded for this route right now.');
+      this.weatherError.set(
+        describeError(error, 'The Open-Meteo forecast could not be loaded for this route right now.')
+      );
     } finally {
       this.weatherLoading.set(false);
     }
@@ -580,10 +738,18 @@ export class RouteAnalysisPageComponent implements AfterViewInit {
   }
 
   private invalidateMapSize(): void {
-    if (!this.map) {
+    if (!this.map || this.destroyed) {
       return;
     }
 
-    window.setTimeout(() => this.map?.invalidateSize(), 0);
+    // Tracked so it can be cancelled in ngOnDestroy; it used to be able to fire
+    // into a component that no longer existed.
+    window.clearTimeout(this.resizeTimeout);
+    this.resizeTimeout = window.setTimeout(() => {
+      this.resizeTimeout = undefined;
+      if (!this.destroyed) {
+        this.map?.invalidateSize();
+      }
+    }, 0);
   }
 }
