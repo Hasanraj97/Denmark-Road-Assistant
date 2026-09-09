@@ -150,10 +150,14 @@ try {
     Wait-ForHttp -Url "http://127.0.0.1:$MlPort/health" -Name 'ML service' -Seconds 120 -LogName 'ml-service'
 
     # --- 2. Backend -------------------------------------------------------
+    # '.\mvnw.cmd', not 'mvnw.cmd'. cmd.exe resolves a bare name against PATH,
+    # and the wrapper lives in the project folder rather than on PATH, so the
+    # bare form fails with "'mvnw.cmd' is not recognized" even though
+    # -WorkingDirectory points at backend\.
     Say "2/3  Backend (port $BackendPort)"
     Start-Service-Logged -WorkDir (Join-Path $Root 'backend') `
                          -FileName 'cmd.exe' `
-                         -ProcessArgs @('/c','mvnw.cmd','-q','spring-boot:run') `
+                         -ProcessArgs @('/c','.\mvnw.cmd','-q','spring-boot:run') `
                          -LogName 'backend' | Out-Null
     Wait-ForHttp -Url "http://127.0.0.1:$BackendPort/api/health" -Name 'Backend' -Seconds 180 -LogName 'backend'
 

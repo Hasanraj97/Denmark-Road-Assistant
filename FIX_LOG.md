@@ -900,4 +900,24 @@ call sites, with a comment recording why that name is forbidden.
 **Verified** by actually running `powershell -File start-all.ps1` and watching all
 three services come up.
 
+**A second, separate defect behind it.** With the first one fixed, the ML service
+started but the backend then failed with:
+
+```
+'mvnw.cmd' is not recognized as an internal or external command
+```
+
+The script launched it as `cmd.exe /c mvnw.cmd`. `cmd.exe` resolves a bare
+command name against `PATH`, and the Maven wrapper lives in the project folder,
+not on `PATH` - so setting `-WorkingDirectory` to `backend\` was not enough. It
+now runs `.\mvnw.cmd`, which is an explicit relative path and always resolves.
+
+Two bugs, one behind the other. The first hid the second, which is why running a
+script matters more than reading it.
+
+**Verified end to end:** `powershell -File start-all.ps1` brings all three
+services up and reports each as healthy, and a live analysis
+(Vejle to Aarhus) returns 71.08 km, 14 turn instructions, a Moderate grade on a
+real 11.8 C Open-Meteo forecast, and 2 reported incidents.
+
 *Files:* `start-all.ps1`
