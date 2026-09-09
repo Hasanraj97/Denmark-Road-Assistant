@@ -8,6 +8,7 @@ import com.example.backend.repository.RouteAnalysisHistoryRepository;
 import com.example.backend.repository.RouteFeedbackRepository;
 import com.example.backend.routing.GeocodingService;
 import com.example.backend.routing.OsrmRoutingService;
+import com.example.backend.traffic.TrafficEventService;
 import com.example.backend.weather.WeatherService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Jwts;
@@ -103,6 +104,13 @@ public abstract class AbstractApiTest {
 
     @MockitoBean
     protected WeatherService weatherService;
+
+    /**
+     * Stubbed so no test reaches the live Vejdirektoratet feed. Returns an empty
+     * incident list by default; a test that cares stubs it explicitly.
+     */
+    @MockitoBean
+    protected TrafficEventService trafficEventService;
 
     @BeforeEach
     void resetState() {

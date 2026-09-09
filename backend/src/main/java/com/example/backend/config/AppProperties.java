@@ -12,6 +12,7 @@ public record AppProperties(
         String jwtSecret,
         long jwtExpirationMs,
         String weatherBaseUrl,
-        int weatherTimeoutSeconds
+        int weatherTimeoutSeconds,
+        String trafficEventsUrl
 ) {
 }

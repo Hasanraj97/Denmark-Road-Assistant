@@ -39,7 +39,8 @@
                 type="text"
                 [ngModel]="origin()"
                 (ngModelChange)="origin.set($event)"
-                placeholder="Roskilde"
+                aria-label="Starting point"
+                placeholder="Start in, for example, Copenhagen"
                 style="width: 100%; height: 46px; padding: 0 16px; border-radius: 16px; border: 1px solid #ddd; background: #fff; z-index: 1; position: relative;"
               />
 
@@ -72,7 +73,8 @@
                 type="text"
                 [ngModel]="destination()"
                 (ngModelChange)="destination.set($event)"
-                placeholder="Copenhagen"
+                aria-label="Destination"
+                placeholder="Going to, for example, Roskilde"
                 style="width: 100%; height: 46px; padding: 0 16px; border-radius: 16px; border: 1px solid #ddd; background: #fff; z-index: 1; position: relative;"
               />
             </div>
@@ -235,6 +237,46 @@
         [error]="weatherError()"
         [modelWeather]="modelWeather()"
       />
+
+      <section class="card incidents-card">
+        <p class="weather-eyebrow">LIVE FROM VEJDIREKTORATET</p>
+        <h2>Reported On Your Route</h2>
+
+        @if (analysis()) {
+          @if (incidents().length) {
+            <ul class="incident-list">
+              @for (incident of incidents(); track incident.headline) {
+                <li class="incident">
+                  <div class="incident-head">
+                    <span class="incident-category">{{ incident.category }}</span>
+                    <span class="incident-distance">{{ incident.distanceFromRouteMetres }} m off route</span>
+                  </div>
+                  <p class="incident-headline">{{ incident.headline }}</p>
+                  <p class="incident-when">
+                    Reported {{ incident.startsAt }}<!--
+                    -->@if (incident.endsAt) { &nbsp;&middot; expected to clear {{ incident.endsAt }} }
+                    @else { &nbsp;&middot; no end time given }
+                  </p>
+                </li>
+              }
+            </ul>
+            <p class="incident-note">
+              Real events published by the Danish Road Directorate, matched to your route
+              within 150 m and filtered to those still running at your departure time.
+              <strong>These are shown for information only</strong> &mdash; the
+              road-condition grade above does not use them.
+            </p>
+          } @else {
+            <p class="empty-text">
+              Nothing reported on this route right now. The Danish Road Directorate
+              publishes roadworks, accidents and queues; none of them currently fall on
+              your route.
+            </p>
+          }
+        } @else {
+          <p class="empty-text">Analyze a route to see reported roadworks and incidents.</p>
+        }
+      </section>
 
       <section class="card advisory-card">
         <div class="advisory-top">

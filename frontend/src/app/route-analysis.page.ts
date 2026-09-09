@@ -89,11 +89,31 @@ interface Prediction {
  * data. It is not about the weather, which is a real Open-Meteo forecast and is
  * reported separately in `weather` along with the source it came from.</p>
  */
+/**
+ * A real event Vejdirektoratet reports on this route.
+ *
+ * This is the only genuinely measured road information in the app. It is shown
+ * beside the grade but deliberately NOT fed into the model - see
+ * RouteIncidentDto on the backend for why.
+ */
+interface RouteIncident {
+  category: string;
+  title: string;
+  headline: string;
+  latitude: number;
+  longitude: number;
+  distanceFromRouteMetres: number;
+  startsAt: string | null;
+  endsAt: string | null;
+  activeAtDeparture: boolean;
+}
+
 interface RouteAnalysisResponse {
   route: RouteInfo;
   features: RouteFeatures;
   prediction: Prediction;
   weather: ModelWeatherReading;
+  incidents: RouteIncident[];
   historyId: number | null;
   syntheticModel: boolean;
   disclaimer: string;
@@ -166,8 +186,12 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
   @ViewChild('mapContainer', { static: true })
   private readonly mapContainer?: ElementRef<HTMLDivElement>;
 
-  protected readonly origin = signal('Copenhagen');
-  protected readonly destination = signal('Roskilde');
+  // Deliberately blank. These used to be pre-filled with Copenhagen and Roskilde,
+  // which meant the form always looked like it had already been filled in and the
+  // route chip claimed a journey the user had not asked for. The placeholders on
+  // the inputs still show those two as examples.
+  protected readonly origin = signal('');
+  protected readonly destination = signal('');
   protected readonly selectedDepartureTime = signal('08:00');
 
   /**
@@ -283,6 +307,19 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
   }
 
   protected async analyzeRoute(): Promise<void> {
+    // Check here as well as on the server. The backend does validate this and
+    // returns a clear 400, but there is no reason to make the user wait for a
+    // network round trip to be told they left a box empty.
+    const from = this.origin().trim();
+    const to = this.destination().trim();
+    if (!from || !to) {
+      const missing = !from && !to ? 'a start and a destination' : !from ? 'a starting point' : 'a destination';
+      this.routeState.set('failed');
+      this.routeError.set(`Enter ${missing} first, for example Copenhagen and Roskilde.`);
+      this.statusMessage.set('');
+      return;
+    }
+
     this.analyzing.set(true);
     this.routeState.set('loading');
     this.routeError.set('');
@@ -417,6 +454,11 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
 
   protected confidencePercent(confidence: number | undefined): number {
     return Math.round((confidence ?? 0) * 100);
+  }
+
+  /** Real reported events on this route, closest first. Empty when none. */
+  protected incidents(): RouteIncident[] {
+    return this.analysis()?.incidents ?? [];
   }
 
   protected routeLabel(): string {

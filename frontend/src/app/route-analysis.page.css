@@ -979,3 +979,62 @@ button:disabled {
     font-size: 1.35rem;
   }
 }
+
+/* --- Reported incidents on the route -------------------------------------
+   Real events from Vejdirektoratet. Styled deliberately soberly and kept
+   visually separate from the advisory card, because unlike the grade these are
+   measured facts rather than model output, and the two must not be confused. */
+.incidents-card .incident-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.incident {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(25, 50, 77, 0.1);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.incident-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.incident-category {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #8e2f2c;
+}
+
+.incident-distance {
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.incident-headline {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.incident-when {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.incident-note {
+  margin: 12px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--muted);
+}

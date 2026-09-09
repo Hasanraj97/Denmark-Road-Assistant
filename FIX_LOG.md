@@ -696,3 +696,84 @@ boundaries and the rejections.
 `weather/WeatherService.java`, `entity/RouteAnalysisHistory.java`,
 `controller/RouteAnalysisController.java`,
 `frontend/src/app/route-analysis.page.{html,ts}`
+
+### Roadworks and incidents on your route (new feature)
+
+**Asked for by the user:** "can I find is it under construction or technical issue".
+
+**What the app did before.** Nothing real. It has a `construction_risk_score`
+feature, but it is only:
+
+```python
+seasonal_roadworks = {"spring": 0.18, "summer": 0.22, "autumn": 0.12, "winter": 0.05}[season]
+construction_risk_score = 0.06 + urban_density * 0.30 + seasonal_roadworks
+```
+
+That says *roadworks are likelier in summer and in built-up areas*. It has never
+heard of the E45.
+
+**Finding the data.** Vejdirektoratet's published SDK points at
+`data.vd-nap.dk`, which **no longer resolves** — `nslookup` returns
+"Non-existent domain". Their registered API needs an account and a key. So the
+live traffic map at trafikkort.vejdirektoratet.dk was opened, its JavaScript
+bundle downloaded, and the host it actually reads extracted from it: a public
+Google Cloud Storage object, **no key and no registration**:
+
+```
+https://storage.googleapis.com/trafikkort-data/geojson/big-screen-events.json
+```
+
+**Two properties of that feed had to be handled, both found by measuring it:**
+
+1. **It keeps recently cleared events.** On one read, **199 of 207** records had
+   already ended. Events that finish before the chosen departure time are dropped.
+2. **It publishes progressive updates as separate records.** One real queue on the
+   E45 appeared **ten times** with ten different end times. Records are collapsed
+   by headline, keeping the longest-lasting (the newest revision).
+
+Junction markers arrive as `&lt;56a&gt;`; unescaping them naively leaves `<56a>`
+on screen, which reads as broken markup, so they are rendered as "exit 56a".
+
+**Matching.** Each event's WGS84 coordinates are compared against the OSRM route
+polyline — a bounding box first, then nearest-vertex distance. OSRM returns a
+dense line (~800 points over 36 km), so nearest-vertex is accurate enough at the
+150 m threshold and far simpler than point-to-segment projection.
+
+**Deliberately NOT fed to the model.** This is the only genuinely measured road
+information in the application, and it is tempting to plug it into
+`construction_risk_score`. That would recreate exactly the train/serve mismatch
+this project spent its largest phase removing: the model was trained on a
+distribution where that feature is an assumption about likelihood, not a count of
+real events. The events are shown beside the grade, and the panel says so.
+
+A failure fetching the feed is treated as "no information", never as an error —
+the analysis still completes.
+
+**Verified.** Vejle to Aarhus returns three distinct active events, at 31 m, 44 m
+and 52 m from the route, including *"Advarsel - E45 fra Vejle mod Aarhus mellem
+exit 56a Horsens V og exit 55 Horsens N"*. Copenhagen to Roskilde returns none,
+correctly. 11 unit tests cover the distance maths, the bounding box and the text
+tidying, without touching the network.
+
+*Files:* `traffic/TrafficEventService.java` (new), `dto/RouteIncidentDto.java`
+(new), `dto/RouteAnalysisResponseDto.java`, `controller/RouteAnalysisController.java`,
+`config/AppProperties.java`, `application.properties`,
+`frontend/src/app/route-analysis.page.{html,ts,css}`
+
+---
+
+### The origin and destination boxes came pre-filled
+
+**What you saw.** The form always opened with "Copenhagen" and "Roskilde"
+already typed in, and the route chip claimed a journey you had not asked for.
+
+**Fix.** Both fields start empty. Clicking Analyze with either one blank now gives
+an immediate message rather than a round trip to the server.
+
+**A second bug this exposed.** With the boxes empty, the placeholders became
+visible for the first time — and they were **swapped**. The origin box suggested
+"Roskilde" and the destination box suggested "Copenhagen". Neither input had an
+accessible name either, so a screen reader announced the origin field as
+"Roskilde". Both are fixed, and the inputs now carry proper `aria-label`s.
+
+*Files:* `frontend/src/app/route-analysis.page.{html,ts}`

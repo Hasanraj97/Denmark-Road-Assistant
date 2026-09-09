@@ -11,6 +11,7 @@ import com.example.backend.ml.MlServiceClient;
 import com.example.backend.routing.GeocodingService;
 import com.example.backend.routing.OsrmRoutingService;
 import com.example.backend.routing.RouteObservationService;
+import com.example.backend.traffic.TrafficEventService;
 import com.example.backend.service.RouteHistoryService;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -42,19 +43,22 @@ public class RouteAnalysisController {
     private final RouteObservationService routeObservationService;
     private final MlServiceClient mlServiceClient;
     private final RouteHistoryService routeHistoryService;
+    private final TrafficEventService trafficEventService;
 
     public RouteAnalysisController(
             GeocodingService geocodingService,
             OsrmRoutingService routingService,
             RouteObservationService routeObservationService,
             MlServiceClient mlServiceClient,
-            RouteHistoryService routeHistoryService
+            RouteHistoryService routeHistoryService,
+            TrafficEventService trafficEventService
     ) {
         this.geocodingService = geocodingService;
         this.routingService = routingService;
         this.routeObservationService = routeObservationService;
         this.mlServiceClient = mlServiceClient;
         this.routeHistoryService = routeHistoryService;
+        this.trafficEventService = trafficEventService;
     }
 
     @PostMapping("/route")
@@ -86,6 +90,13 @@ public class RouteAnalysisController {
         var prediction = mlServiceClient.predict(observation);
         var features = prediction.features();
 
+        // Real reported events on this route. Shown beside the grade, never folded
+        // into it - the model was trained without them. Failure here is silent and
+        // yields an empty list rather than breaking the analysis.
+        var incidents = trafficEventService.incidentsOnRoute(
+                routeDto.geometry(),
+                java.time.LocalDateTime.parse(observation.departureIso()));
+
         Long historyId = null;
         if (user != null) {
             // Store the RESOLVED departure ("2026-09-15 17:00"), not the raw time
@@ -102,6 +113,7 @@ public class RouteAnalysisController {
                 features,
                 prediction,
                 observation.weather(),
+                incidents,
                 historyId,
                 true,
                 DISCLAIMER

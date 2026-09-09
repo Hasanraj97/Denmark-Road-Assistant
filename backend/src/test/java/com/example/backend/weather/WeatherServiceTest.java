@@ -47,7 +47,10 @@ class WeatherServiceTest {
                 "test-secret-that-is-long-enough-for-hs256!!",
                 86_400_000L,
                 BASE_URL,
-                8
+                8,
+                // Unreachable on purpose: nothing in this test should touch the
+                // live Vejdirektoratet feed.
+                "https://traffic.invalid/events.json"
         );
     }
 
