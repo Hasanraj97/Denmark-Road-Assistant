@@ -14,7 +14,7 @@ resume from the phase named below. Do not restart from Phase 0.
 | **Current phase** | **COMPLETE** — all phases done, suite green twice |
 | **Phases complete** | 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 |
 | **Tests** | **384 passing** — 77 backend (JUnit) + 307 ML (pytest) |
-| **Build** | frontend 556.48 kB, inside the 560 kB budget |
+| **Build** | frontend 556.52 kB, inside the 560 kB budget |
 
 ### Commits
 
@@ -159,9 +159,9 @@ all three.
 
 ---
 
-## PHASE 5 — TESTS ✅  ·  383 passing, none touching the network
+## PHASE 5 — TESTS ✅  ·  384 passing, none touching the network
 
-**Backend — 76 tests, 9 classes, ~17 s.** Written to catch *these* defects:
+**Backend — 77 tests, 9 classes, ~17 s.** Written to catch *these* defects:
 F2 (old token still works after an email change; subject asserted numeric),
 F1 (mocked ML failure surfaces as 502 with its own text, explicitly not
 "Something went wrong"), expired/garbage/wrong-signature tokens → 401 never 500,
