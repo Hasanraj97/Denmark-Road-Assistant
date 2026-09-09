@@ -11,10 +11,10 @@ resume from the phase named below. Do not restart from Phase 0.
 
 | | |
 |---|---|
-| **Current phase** | **COMPLETE** — all phases done, suite green twice |
+| **Current phase** | **COMPLETE** — all phases done, plus post-loop features below |
 | **Phases complete** | 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 |
-| **Tests** | **384 passing** — 77 backend (JUnit) + 307 ML (pytest) |
-| **Build** | frontend 556.52 kB, inside the 560 kB budget |
+| **Tests** | **407 passing** — 100 backend (JUnit) + 307 ML (pytest) |
+| **Build** | frontend 585.28 kB, inside the 600 kB budget |
 
 ### Commits
 
@@ -388,3 +388,30 @@ The three headline outcomes:
    parents) and retrain. If accuracy barely moves, the feature importances
    currently reported in the dissertation are misleading and the cleaner model is
    the one to write about.
+
+
+---
+
+## AFTER THE LOOP — features added at the user's request
+
+The repair loop finished at commit `083984f`. Everything below was asked for
+afterwards and built on top of it.
+
+| Commit | What |
+|---|---|
+| `8feca31` | **Departure date**, not just a time. `day_of_week` and `season` are two of the model's nineteen features and neither could be varied before, so the app could not answer "what about next Saturday". Limited to today + 6 days, matching Open-Meteo's forecast window, because the app refuses to grade a route without a real forecast behind it. |
+| `8d15edc` | **Real roadworks and incidents on the route**, from Vejdirektoratet. Their documented SDK host no longer resolves, so the feed behind their own public traffic map is used - no API key. Shown beside the grade, deliberately NOT fed to the model. |
+| `b4b97d2` | **Surfaced the model's own workings.** Grade probabilities, all 19 derived features, and feature importances. The component already computed all of it; the template simply never rendered it. |
+| `5d8230e` | **Full redesign** - "Aurora Slate" dark instrument panel, with a motion system behind `prefers-reduced-motion`. |
+| `afeb4b2` | **Turn-by-turn guidance.** OSRM `steps=true`, a dependency-free `NavigationService` for the maths, GPS following, spoken instructions, and off-route detection. |
+
+### Still true, and still worth saying in the write-up
+
+* Only the **weather** inputs are real. Traffic, roadworks risk and accident
+  exposure inside the *model* remain assumptions - the Vejdirektoratet incidents
+  are displayed alongside the grade, not folded into it, precisely so that the
+  train/serve fix from Phase 4 is not quietly undone.
+* The Vejdirektoratet endpoint is **undocumented** - it is what their public map
+  reads, not a published contract, and could change without notice.
+* Guidance does **not** re-route around traffic, and the road-condition grade is
+  not recomputed while driving.
