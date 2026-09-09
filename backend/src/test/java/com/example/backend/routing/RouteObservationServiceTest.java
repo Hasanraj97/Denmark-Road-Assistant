@@ -69,7 +69,8 @@ class RouteObservationServiceTest {
                 123.456,
                 45.678,
                 List.of(new RoutePointDto(origin.latitude(), origin.longitude()),
-                        new RoutePointDto(destination.latitude(), destination.longitude()))
+                        new RoutePointDto(destination.latitude(), destination.longitude())),
+                java.util.List.of()
         );
     }
 

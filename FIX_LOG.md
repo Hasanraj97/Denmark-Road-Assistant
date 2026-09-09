@@ -820,3 +820,57 @@ were added for keyboard users at the same time.
 would have failed the build outright. Everything is namespaced `ra-`.
 
 *Files:* `frontend/src/app/route-analysis.page.{html,ts}`, `frontend/src/styles.css`
+
+### Turn-by-turn guidance ("Start my journey")
+
+**Asked for by the user:** navigation like Google Maps, following GPS.
+
+**What was missing.** The route request asked OSRM for
+`overview=full&geometries=geojson` only. That returns the *shape* of the route -
+enough to draw a line, not enough to guide anyone along it. There were no
+instructions at all.
+
+**Backend.** The request now adds `steps=true`, and each manoeuvre is turned into
+a sentence. OSRM ships no human wording on purpose - it returns a type and a
+modifier and leaves phrasing to the client so it can be localised - so
+`turn` + `left` + `Vestergade` becomes *"Turn left onto Vestergade"*, and
+`roundabout` + `exit: 3` becomes *"At the roundabout, take exit 3"*. Each step is
+also matched to the nearest point on the overall route line; that index is what
+lets the app know how far along the driver already is without re-measuring the
+whole route on every GPS fix.
+
+**Frontend.** A new `NavigationService` holds the maths and deliberately touches
+no map, no DOM and no browser API, so it can be reasoned about on its own:
+great-circle distance, nearest point on the route, which step is being driven,
+distance to the next manoeuvre, distance and time remaining, and off-route
+detection.
+
+Progress is tracked by **position along the route line**, not by distance to the
+next turn. That matters on a route that doubles back on itself, where a driver
+can be physically close to a manoeuvre they passed twenty minutes ago.
+
+The page adds a **Start my journey** button, a live guidance panel (big distance,
+current instruction, the one after it, remaining distance, time left and arrival
+clock), a full **Directions** list with the current step highlighted, a GPS dot
+that the map pans to follow, and spoken guidance through the browser's own speech
+synthesiser at 1 km, 400 m and at the turn - each said once, tracked so a GPS tick
+cannot repeat it. Voice has a mute toggle. Leaving the route by more than 60 m
+triggers one spoken warning, not one per fix. The watch is cleared on
+`ngOnDestroy`, so it cannot keep running after the page is gone.
+
+**Honest limitations, stated on screen:** it follows this device's GPS, it does
+**not** re-route around traffic, and the road-condition grade is not recomputed
+while driving. A desktop browser will not move, so it is only meaningful on a
+phone or in the Android build.
+
+**Verified** by feeding simulated GPS fixes along the real Copenhagen-Roskilde
+geometry: the panel tracked to *"3.3 km - Turn left onto Vigerslevvej, then Turn
+right onto Folehaven"*, remaining 32 km / 25 min / arrive 09:05, step 12
+highlighted in the list, GPS marker drawn, and the journey ended itself on
+arrival. Seven tests cover the instruction wording, including unnamed roads,
+roundabout exits and unknown manoeuvre types.
+
+*Files:* `dto/RouteStepDto.java` (new), `routing/OsrmRoutingService.java`,
+`dto/RouteResponseDto.java`, `routing/RouteComputation.java`,
+`frontend/src/app/navigation.service.ts` (new),
+`frontend/src/app/route-analysis.page.{html,ts}`, `frontend/src/styles.css`

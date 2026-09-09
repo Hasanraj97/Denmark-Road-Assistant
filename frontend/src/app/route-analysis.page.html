@@ -181,6 +181,73 @@
           }
         </div>
 
+        <div class="nav-bar">
+          @if (!navigating()) {
+            <button
+              type="button"
+              class="nav-start"
+              [disabled]="!canNavigate()"
+              (click)="startJourney()"
+            >
+              &#9654;&nbsp; Start my journey
+            </button>
+            <span class="nav-hint">
+              @if (canNavigate()) {
+                Follows your GPS and reads each turn aloud. Best on a phone.
+              } @else {
+                Analyze a route first to enable guidance.
+              }
+            </span>
+          } @else {
+            <button type="button" class="nav-end" (click)="endJourney()">Stop guidance</button>
+            <button type="button" class="nav-voice" (click)="toggleVoice()">
+              {{ voiceOn() ? '🔊 Voice on' : '🔇 Voice off' }}
+            </button>
+          }
+        </div>
+
+        @if (navigating()) {
+          <div class="nav-panel" [class.is-offroute]="offRoute()">
+            @if (offRoute()) {
+              <p class="nav-offroute">
+                <strong>You have left the route.</strong>
+                You are {{ formatDistance(navProgress()!.offRouteMetres) }} from it &mdash;
+                rejoin it when it is safe.
+              </p>
+            } @else if (currentStep(); as step) {
+              <div class="nav-now">
+                <span class="nav-distance">{{ formatDistance(navProgress()!.distanceToManeuvre) }}</span>
+                <span class="nav-instruction">{{ step.instruction }}</span>
+              </div>
+
+              @if (followingStep(); as next) {
+                <p class="nav-then">then {{ next.instruction }}</p>
+              }
+            } @else {
+              <p class="nav-then">Getting your position&hellip;</p>
+            }
+
+            @if (navProgress(); as progress) {
+              <div class="nav-remaining">
+                <div><span>Remaining</span><strong>{{ formatDistance(progress.remainingMetres) }}</strong></div>
+                <div><span>Time left</span><strong>{{ formatDuration(progress.remainingSeconds) }}</strong></div>
+                <div><span>Arrive about</span><strong>{{ arrivalClock() }}</strong></div>
+              </div>
+            }
+
+            @if (navError()) {
+              <p class="nav-error">{{ navError() }}</p>
+            }
+
+            <p class="nav-note">
+              Guidance follows this device's GPS. It does not re-route around traffic,
+              and the road-condition grade above is not updated while you drive.
+            </p>
+          </div>
+        } @else if (navError()) {
+          <p class="nav-error">{{ navError() }}</p>
+        }
+
         <div class="map-footer-grid explainability-footer">
           <article class="mini-card">
             <h2>What Shaped This Advisory</h2>
@@ -214,6 +281,28 @@
             }
           </article>
         </div>
+      </section>
+
+      <section class="card ra-card">
+        <p class="weather-eyebrow">TURN BY TURN</p>
+        <h2>Directions</h2>
+
+        @if (navSteps().length) {
+          <ol class="nav-steps">
+            @for (step of navSteps(); track $index) {
+              <li
+                class="nav-step"
+                [class.is-current]="navigating() && navProgress()?.stepIndex === $index"
+              >
+                <span class="nav-step-index">{{ $index + 1 }}</span>
+                <span class="nav-step-text">{{ step.instruction }}</span>
+                <span class="nav-step-distance">{{ formatDistance(step.distanceMetres) }}</span>
+              </li>
+            }
+          </ol>
+        } @else {
+          <p class="empty-text">Analyze a route to see the directions.</p>
+        }
       </section>
 
       <section class="card ra-card">

@@ -21,6 +21,7 @@ import { describeError, statusOf } from './error-message';
 import { FeedbackCardComponent } from './feedback-card.component';
 import { FeedbackResponse } from './history.service';
 import { LocationService } from './location.service';
+import { NavigationProgress, NavigationService, RouteStep } from './navigation.service';
 import { WeatherWidgetComponent } from './weather-widget.component';
 import { ModelWeatherReading, WeatherHour, WeatherService } from './weather.service';
 
@@ -35,6 +36,7 @@ interface RouteInfo {
   distanceKm: number;
   durationMinutes: number;
   geometry: RoutePoint[];
+  steps: RouteStep[];
 }
 
 interface RouteFeatures {
@@ -179,6 +181,7 @@ const DEFAULT_DISCLAIMER =
 export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
+  private readonly navigation = inject(NavigationService);
   private readonly backendUrlService = inject(BackendUrlService);
   private readonly locationService = inject(LocationService);
   private readonly weatherService = inject(WeatherService);
@@ -283,6 +286,7 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
    * the application.</p>
    */
   ngOnDestroy(): void {
+    this.endJourney();
     this.destroyed = true;
 
     if (this.resizeTimeout !== undefined) {
@@ -517,6 +521,208 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
       percent: Math.round(weight * 1000) / 10
     }))
   );
+
+  // ---------------------------------------------------------------- guidance
+  // Turn-by-turn navigation. The route already comes back with OSRM's
+  // manoeuvres; this follows the device GPS along them and says what to do next.
+
+  protected readonly navigating = signal(false);
+  protected readonly navProgress = signal<NavigationProgress | null>(null);
+  protected readonly navError = signal('');
+  protected readonly voiceOn = signal(true);
+
+  private watchId: number | null = null;
+  private readonly spoken = new Set<string>();
+  private meMarker?: L.CircleMarker;
+
+  protected navSteps(): RouteStep[] {
+    return this.analysis()?.route.steps ?? [];
+  }
+
+  protected canNavigate(): boolean {
+    return this.navSteps().length > 0;
+  }
+
+  /** The instruction to follow right now. */
+  protected currentStep(): RouteStep | null {
+    const progress = this.navProgress();
+    const steps = this.navSteps();
+    return progress && steps[progress.stepIndex] ? steps[progress.stepIndex] : null;
+  }
+
+  /** The one after that, so the driver can see what is coming. */
+  protected followingStep(): RouteStep | null {
+    const progress = this.navProgress();
+    const steps = this.navSteps();
+    return progress && steps[progress.stepIndex + 1] ? steps[progress.stepIndex + 1] : null;
+  }
+
+  protected offRoute(): boolean {
+    const progress = this.navProgress();
+    return !!progress && progress.offRouteMetres > NavigationService.OFF_ROUTE_METRES;
+  }
+
+  protected formatDistance(metres: number): string {
+    return this.navigation.formatDistance(metres);
+  }
+
+  protected formatDuration(seconds: number): string {
+    return this.navigation.formatDuration(seconds);
+  }
+
+  /** Clock time the driver should arrive, from the remaining-time estimate. */
+  protected arrivalClock(): string {
+    const progress = this.navProgress();
+    if (!progress) {
+      return '';
+    }
+    const arrival = new Date(Date.now() + progress.remainingSeconds * 1000);
+    return arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  protected startJourney(): void {
+    if (!this.canNavigate()) {
+      this.navError.set('Analyze a route first, then you can start the journey.');
+      return;
+    }
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      this.navError.set('This device cannot report its location, so guidance is not available.');
+      return;
+    }
+
+    this.navError.set('');
+    this.spoken.clear();
+    this.navigating.set(true);
+    this.speak('Starting guidance.');
+
+    this.watchId = navigator.geolocation.watchPosition(
+      (position) => this.onPosition(position),
+      (error) => {
+        // One failed fix is not worth ending the journey over - the watch keeps
+        // running and the next fix usually succeeds. A refused permission is
+        // different: guidance can never work, so stop cleanly.
+        if (error.code === error.PERMISSION_DENIED) {
+          this.navError.set('Location permission was refused, so guidance cannot follow you.');
+          this.endJourney();
+          return;
+        }
+        this.navError.set('Waiting for a GPS signal...');
+      },
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
+    );
+  }
+
+  protected endJourney(): void {
+    if (this.watchId !== null && typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.clearWatch(this.watchId);
+    }
+    this.watchId = null;
+    this.navigating.set(false);
+    this.navProgress.set(null);
+    this.spoken.clear();
+    if (this.meMarker && this.map) {
+      this.map.removeLayer(this.meMarker);
+      this.meMarker = undefined;
+    }
+    this.stopSpeaking();
+  }
+
+  protected toggleVoice(): void {
+    this.voiceOn.set(!this.voiceOn());
+    if (!this.voiceOn()) {
+      this.stopSpeaking();
+    }
+  }
+
+  private onPosition(position: GeolocationPosition): void {
+    if (this.destroyed || !this.navigating()) {
+      return;
+    }
+
+    const here = { lat: position.coords.latitude, lng: position.coords.longitude };
+    const route = this.analysis()?.route;
+    if (!route) {
+      return;
+    }
+
+    const progress = this.navigation.progress(
+      route.geometry.map((point) => ({ lat: point.lat, lng: point.lng })),
+      this.navSteps(),
+      here
+    );
+    if (!progress) {
+      return;
+    }
+
+    this.navProgress.set(progress);
+    this.navError.set('');
+    this.drawMe(here);
+
+    if (progress.arrived) {
+      this.speak('You have arrived at your destination.');
+      this.endJourney();
+      return;
+    }
+
+    if (progress.offRouteMetres > NavigationService.OFF_ROUTE_METRES) {
+      // Said once per departure from the line, not on every GPS tick.
+      if (!this.spoken.has('off-route')) {
+        this.spoken.add('off-route');
+        this.speak('You have left the route. Rejoin it when you can.');
+      }
+      return;
+    }
+    this.spoken.delete('off-route');
+
+    const step = this.currentStep();
+    if (step) {
+      const phrase = this.navigation.announcement(step, progress.distanceToManeuvre, this.spoken);
+      if (phrase) {
+        this.speak(phrase);
+      }
+    }
+  }
+
+  private drawMe(here: { lat: number; lng: number }): void {
+    if (!this.map) {
+      return;
+    }
+    if (!this.meMarker) {
+      this.meMarker = L.circleMarker([here.lat, here.lng], {
+        radius: 9,
+        color: '#0b111c',
+        weight: 3,
+        fillColor: '#33d6c0',
+        fillOpacity: 1
+      }).addTo(this.map);
+    } else {
+      this.meMarker.setLatLng([here.lat, here.lng]);
+    }
+    // Keep the driver centred, but pan rather than setView so a pinch-zoom is
+    // not yanked back on every fix.
+    this.map.panTo([here.lat, here.lng], { animate: true, duration: 0.6 });
+  }
+
+  /** Spoken guidance, through the browser's own speech synthesiser. */
+  private speak(phrase: string): void {
+    if (!this.voiceOn() || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      return;
+    }
+    try {
+      const utterance = new SpeechSynthesisUtterance(phrase);
+      utterance.rate = 1.02;
+      utterance.lang = 'en-GB';
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      // Speech is a bonus. Losing it must never interrupt the guidance itself.
+    }
+  }
+
+  private stopSpeaking(): void {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+  }
 
   /** Real reported events on this route, closest first. Empty when none. */
   protected incidents(): RouteIncident[] {

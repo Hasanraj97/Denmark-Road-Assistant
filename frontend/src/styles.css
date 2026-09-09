@@ -435,3 +435,170 @@ button:not(:disabled):active { transform: translateY(0); }
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ==========================================================================
+   Turn-by-turn guidance
+   ========================================================================== */
+
+.nav-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+
+.nav-start {
+  padding: 13px 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(51, 214, 192, 0.5);
+  background: linear-gradient(135deg, #33d6c0 0%, #12a897 100%);
+  color: #06131a;
+  font-weight: 800;
+  font-size: 0.98rem;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(51, 214, 192, 0.22);
+}
+
+.nav-start:disabled {
+  background: rgba(150, 185, 230, 0.1);
+  border-color: rgba(150, 185, 230, 0.16);
+  color: #8ba0bd;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.nav-end, .nav-voice {
+  padding: 11px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(150, 185, 230, 0.2);
+  background: rgba(11, 17, 28, 0.6);
+  color: #e9f0fa;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.nav-end { border-color: rgba(251, 113, 133, 0.45); color: #fb7185; }
+
+.nav-hint { font-size: 0.8rem; color: #8ba0bd; }
+
+/* --- the live guidance panel --------------------------------------------- */
+
+.nav-panel {
+  margin-top: 12px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(51, 214, 192, 0.28);
+  background:
+    radial-gradient(600px 200px at 0% 0%, rgba(51, 214, 192, 0.14) 0%, transparent 70%),
+    rgba(11, 17, 28, 0.72);
+}
+
+.nav-panel.is-offroute { border-color: rgba(251, 113, 133, 0.5); }
+
+.nav-now {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.nav-distance {
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: #33d6c0;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.nav-instruction {
+  font-size: 1.16rem;
+  font-weight: 700;
+  color: #e9f0fa;
+}
+
+.nav-then {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  color: #8ba0bd;
+}
+
+.nav-offroute { margin: 0; color: #fb7185; font-size: 0.98rem; line-height: 1.5; }
+
+.nav-remaining {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(150, 185, 230, 0.14);
+}
+
+.nav-remaining div { display: flex; flex-direction: column; gap: 2px; min-width: 92px; }
+
+.nav-remaining span {
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8ba0bd;
+}
+
+.nav-remaining strong { font-size: 1.02rem; color: #e9f0fa; font-variant-numeric: tabular-nums; }
+
+.nav-error { margin: 10px 0 0; color: #fbbf24; font-size: 0.86rem; }
+
+.nav-note { margin: 12px 0 0; font-size: 0.76rem; line-height: 1.5; color: #8ba0bd; }
+
+/* --- the full directions list -------------------------------------------- */
+
+.nav-steps {
+  list-style: none;
+  counter-reset: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.nav-step {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font-size: 0.88rem;
+  color: #e9f0fa;
+}
+
+.nav-step-index {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(150, 185, 230, 0.12);
+  color: #8ba0bd;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.nav-step-distance { color: #8ba0bd; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+
+/* The step being driven right now. */
+.nav-step.is-current {
+  background: rgba(51, 214, 192, 0.12);
+  border-color: rgba(51, 214, 192, 0.4);
+}
+
+.nav-step.is-current .nav-step-index { background: #33d6c0; color: #06131a; }
+.nav-step.is-current .nav-step-text { font-weight: 700; }
+
+@media (max-width: 760px) {
+  .nav-distance { font-size: 1.7rem; }
+  .nav-instruction { font-size: 1.02rem; }
+}

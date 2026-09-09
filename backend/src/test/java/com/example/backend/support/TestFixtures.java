@@ -72,7 +72,8 @@ public final class TestFixtures {
                 roskilde(),
                 32.4,
                 28.0,
-                List.of(new RoutePointDto(55.6761, 12.5683), new RoutePointDto(55.6415, 12.0803))
+                List.of(new RoutePointDto(55.6761, 12.5683), new RoutePointDto(55.6415, 12.0803)),
+                java.util.List.of()
         );
     }
 
@@ -83,7 +84,8 @@ public final class TestFixtures {
                 route.destination().displayName(),
                 route.distanceKm(),
                 route.durationMinutes(),
-                route.geometry()
+                route.geometry(),
+                java.util.List.of()
         );
     }
 

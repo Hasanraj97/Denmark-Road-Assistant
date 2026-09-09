@@ -7,6 +7,8 @@ public record RouteResponseDto(
         String destinationLabel,
         double distanceKm,
         double durationMinutes,
-        List<RoutePointDto> geometry
+        List<RoutePointDto> geometry,
+        /** Turn-by-turn instructions, in order. Empty if OSRM did not supply any. */
+        List<RouteStepDto> steps
 ) {
 }
