@@ -58,7 +58,12 @@ class RouteAnalysisHistoryTest extends AbstractApiTest {
                 .andExpect(jsonPath("$[0].originLabel").value(TestFixtures.ORIGIN_LABEL))
                 .andExpect(jsonPath("$[0].destinationLabel").value(TestFixtures.DESTINATION_LABEL))
                 .andExpect(jsonPath("$[0].predictedCondition").value("Moderate"))
-                .andExpect(jsonPath("$[0].selectedDepartureTime").value("08:00"))
+                // History stores the RESOLVED departure, "yyyy-MM-dd HH:mm", not the
+                // bare time the user typed - so an old entry still says which day it
+                // was predicted for. Matched by pattern rather than against today's
+                // date, or the test would start failing at midnight.
+                .andExpect(jsonPath("$[0].selectedDepartureTime")
+                        .value(org.hamcrest.Matchers.matchesPattern("\\d{4}-\\d{2}-\\d{2} 08:00")))
                 .andExpect(jsonPath("$[0].confidence").value(0.83));
     }
 

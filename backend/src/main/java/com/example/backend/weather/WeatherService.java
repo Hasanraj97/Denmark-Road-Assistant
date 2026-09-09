@@ -2,6 +2,7 @@ package com.example.backend.weather;
 
 import com.example.backend.config.AppProperties;
 import com.example.backend.dto.WeatherReadingDto;
+import com.example.backend.routing.RouteObservationService;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +62,10 @@ public class WeatherService {
                     .queryParam("hourly",
                             "temperature_2m,precipitation,relative_humidity_2m,wind_speed_10m")
                     .queryParam("timezone", "Europe/Copenhagen")
-                    .queryParam("forecast_days", 3)
+                    // Must cover the same span RouteObservationService allows a
+                    // user to pick, or a legal date could come back with no
+                    // forecast and silently fall through to the seasonal estimate.
+                    .queryParam("forecast_days", RouteObservationService.FORECAST_WINDOW_DAYS)
                     .build()
                     .toUri();
 

@@ -7,6 +7,8 @@ import com.example.backend.weather.WeatherService;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -21,6 +23,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
@@ -83,27 +86,98 @@ class RouteObservationServiceTest {
 
         LocalTime chosen = now.toLocalTime().plusMinutes(2).withSecond(0).withNano(0);
 
-        LocalDateTime resolved = service.resolveDeparture(chosen.format(HH_MM));
+        LocalDateTime resolved = service.resolveDeparture(null, chosen.format(HH_MM));
 
         assertThat(resolved.toLocalDate()).isEqualTo(now.toLocalDate());
         assertThat(resolved.getHour()).isEqualTo(chosen.getHour());
     }
 
     @Test
-    @DisplayName("a time that has already passed resolves to tomorrow")
-    void timeAlreadyPastResolvesToTomorrow() {
+    @DisplayName("with no date, a time that has already passed still means today")
+    void timeAlreadyPastStillMeansToday() {
         ZonedDateTime now = ZonedDateTime.now(DENMARK);
         Assumptions.assumeFalse(now.getHour() == 0 && now.getMinute() <= 2,
                 "skipped in the first three minutes of the day, where 'earlier today' wraps to yesterday");
 
         LocalTime chosen = now.toLocalTime().minusMinutes(2).withSecond(0).withNano(0);
 
-        LocalDateTime resolved = service.resolveDeparture(chosen.format(HH_MM));
+        LocalDateTime resolved = service.resolveDeparture(null, chosen.format(HH_MM));
 
+        // The service used to roll a past time forward to tomorrow, because a time
+        // was all it had and it had to guess a day. Now the user picks the day
+        // explicitly, so an omitted date simply means today and nothing is guessed
+        // on their behalf.
         assertThat(resolved.toLocalDate())
-                .as("a time that is already behind us means the same time tomorrow")
-                .isEqualTo(now.toLocalDate().plusDays(1));
+                .as("no date supplied means today, not a guess about tomorrow")
+                .isEqualTo(now.toLocalDate());
         assertThat(resolved.getHour()).isEqualTo(chosen.getHour());
+    }
+
+    // ------------------------------------------------------------------
+    // the departure DATE
+    //
+    // The app promises that every grade is backed by a real Open-Meteo forecast,
+    // so it accepts only days it can actually get one for: today through
+    // today + FORECAST_WINDOW_DAYS - 1. Anything else is refused with a 400 that
+    // says what the range is, rather than quietly falling back to a seasonal
+    // average and pretending it was a forecast.
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("a date inside the forecast window is used as given")
+    void dateInsideWindowIsUsed() {
+        LocalDate wanted = LocalDate.now(DENMARK).plusDays(3);
+
+        LocalDateTime resolved = service.resolveDeparture(wanted.toString(), "17:00");
+
+        assertThat(resolved.toLocalDate()).isEqualTo(wanted);
+        assertThat(resolved.getHour()).isEqualTo(17);
+        assertThat(resolved.getMinute()).isZero();
+    }
+
+    @Test
+    @DisplayName("today and the last day of the window are both accepted")
+    void bothEndsOfTheWindowAreAccepted() {
+        LocalDate today = LocalDate.now(DENMARK);
+        LocalDate lastAllowed = today.plusDays(RouteObservationService.FORECAST_WINDOW_DAYS - 1L);
+
+        assertThat(service.resolveDeparture(today.toString(), "09:00").toLocalDate()).isEqualTo(today);
+        assertThat(service.resolveDeparture(lastAllowed.toString(), "09:00").toLocalDate())
+                .isEqualTo(lastAllowed);
+    }
+
+    @Test
+    @DisplayName("a date in the past is refused with a 400, not silently accepted")
+    void pastDateIsRefused() {
+        String yesterday = LocalDate.now(DENMARK).minusDays(1).toString();
+
+        assertThatThrownBy(() -> service.resolveDeparture(yesterday, "09:00"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(thrown -> assertThat(((ResponseStatusException) thrown).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST))
+                .hasMessageContaining("already passed");
+    }
+
+    @Test
+    @DisplayName("a date beyond the forecast window is refused, because no real forecast exists for it")
+    void dateBeyondWindowIsRefused() {
+        String tooFar = LocalDate.now(DENMARK)
+                .plusDays(RouteObservationService.FORECAST_WINDOW_DAYS)
+                .toString();
+
+        assertThatThrownBy(() -> service.resolveDeparture(tooFar, "09:00"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(thrown -> assertThat(((ResponseStatusException) thrown).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST))
+                .hasMessageContaining("forecast");
+    }
+
+    @Test
+    @DisplayName("a date that is not a date is refused with a readable message")
+    void unparseableDateIsRefused() {
+        assertThatThrownBy(() -> service.resolveDeparture("next tuesday", "09:00"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("2026-09-15");
     }
 
     @ParameterizedTest(name = "\"{0}\" falls back to the current hour")
@@ -111,7 +185,7 @@ class RouteObservationServiceTest {
     @DisplayName("blank or unparseable input falls back to the current hour instead of failing")
     void unusableInputFallsBackToNow(String input) {
         LocalDateTime before = LocalDateTime.now(DENMARK).truncatedTo(ChronoUnit.HOURS);
-        LocalDateTime resolved = service.resolveDeparture(input);
+        LocalDateTime resolved = service.resolveDeparture(null, input);
         LocalDateTime after = LocalDateTime.now(DENMARK).truncatedTo(ChronoUnit.HOURS);
 
         assertThat(resolved).isBetween(before, after);
@@ -122,7 +196,7 @@ class RouteObservationServiceTest {
     @DisplayName("null input falls back to the current hour instead of throwing")
     void nullInputFallsBackToNow() {
         LocalDateTime before = LocalDateTime.now(DENMARK).truncatedTo(ChronoUnit.HOURS);
-        LocalDateTime resolved = service.resolveDeparture(null);
+        LocalDateTime resolved = service.resolveDeparture(null, null);
         LocalDateTime after = LocalDateTime.now(DENMARK).truncatedTo(ChronoUnit.HOURS);
 
         assertThat(resolved).isBetween(before, after);
@@ -132,7 +206,7 @@ class RouteObservationServiceTest {
     @ValueSource(strings = {"00:17", "06:45", "12:34", "17:59", "23:31"})
     @DisplayName("the resolved instant always has minutes, seconds and nanos zeroed")
     void minutesAreAlwaysZeroed(String input) {
-        LocalDateTime resolved = service.resolveDeparture(input);
+        LocalDateTime resolved = service.resolveDeparture(null, input);
 
         assertThat(resolved.getMinute()).as("minutes must be zeroed").isZero();
         assertThat(resolved.getSecond()).isZero();
@@ -146,7 +220,7 @@ class RouteObservationServiceTest {
     @Test
     @DisplayName("surrounding whitespace is tolerated")
     void whitespaceIsTrimmed() {
-        LocalDateTime resolved = service.resolveDeparture("  09:30  ");
+        LocalDateTime resolved = service.resolveDeparture(null, "  09:30  ");
         assertThat(resolved.getHour()).isEqualTo(9);
         assertThat(resolved.getMinute()).isZero();
     }
@@ -165,7 +239,7 @@ class RouteObservationServiceTest {
                 place("Tinglev", 54.93, 9.25, 0.30)
         );
 
-        RouteObservationDto observation = service.observe(route, "08:00");
+        RouteObservationDto observation = service.observe(route, null, "08:00");
 
         assertThat(observation.urbanSignal())
                 .as("(0.92 + 0.30) / 2")
@@ -183,7 +257,7 @@ class RouteObservationServiceTest {
 
         RouteObservationDto observation = service.observe(
                 routeBetween(place("Skjern", 55.95, 8.50, 0.20), place("Nørre Snede", 55.96, 9.44, 0.10)),
-                "08:00");
+                null, "08:00");
 
         assertThat(observation.urbanSignal()).isEqualTo(0.15, within(1e-9));
     }
@@ -198,7 +272,7 @@ class RouteObservationServiceTest {
                 place("B", 57.00, 12.00, 0.50)
         );
 
-        RouteObservationDto observation = service.observe(route, "08:00");
+        RouteObservationDto observation = service.observe(route, null, "08:00");
 
         ArgumentCaptor<Double> lat = ArgumentCaptor.forClass(Double.class);
         ArgumentCaptor<Double> lng = ArgumentCaptor.forClass(Double.class);
@@ -221,7 +295,7 @@ class RouteObservationServiceTest {
 
         RouteObservationDto observation = service.observe(
                 routeBetween(place("A", 55.0, 10.0, 0.4), place("B", 56.0, 11.0, 0.6)),
-                "08:00");
+                null, "08:00");
 
         assertThat(observation.distanceKm()).isEqualTo(123.46);
         assertThat(observation.durationMin()).isEqualTo(45.68);

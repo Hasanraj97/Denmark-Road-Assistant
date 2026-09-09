@@ -78,6 +78,23 @@
             </div>
 
             <div class="time-field">
+              <label for="departureDate">Departure date</label>
+              <input
+                id="departureDate"
+                type="date"
+                [ngModel]="selectedDepartureDate()"
+                (ngModelChange)="selectedDepartureDate.set($event)"
+                name="departureDate"
+                [min]="earliestDepartureDate()"
+                [max]="latestDepartureDate()"
+              />
+              <p class="field-hint">
+                Forecasts reach {{ latestDepartureDate() }}. The grade always uses a real
+                forecast, so later dates are not offered.
+              </p>
+            </div>
+
+            <div class="time-field">
               <label for="departureTime">Departure time</label>
               <input
                 id="departureTime"
@@ -190,7 +207,7 @@
             </div>
             <div>
               <span>Departure time</span>
-              <strong>{{ formatSelectedTime(selectedDepartureTime()) }}</strong>
+              <strong>{{ formatSelectedDeparture() }}</strong>
             </div>
             <div>
               <span>Traffic window</span>

@@ -371,6 +371,18 @@ message reaching you at all is deliberate — it used to be replaced by a blank
 Nominatim found nothing. The app only searches Denmark. Try a fuller address, a
 postcode, or a nearby larger town.
 
+**`The weather forecast only reaches <date>, and this app will not grade a route
+without a real forecast behind it.`**
+You picked a departure date further ahead than Open-Meteo will forecast. The app
+allows today plus the next six days. It refuses rather than quietly substituting a
+seasonal average, because the whole point is that the weather behind a grade is
+real. To change the window, adjust `FORECAST_WINDOW_DAYS` in
+`RouteObservationService` — `WeatherService` reads the same constant, so the two
+cannot drift apart.
+
+**`That date has already passed.`**
+The departure date must be today or later. You cannot forecast the past.
+
 **`Could not build a Denmark road route for those locations.`**
 Both places were found but OSRM could not connect them by road — usually one of
 them is on an island with no bridge, or is not near a road.
@@ -458,7 +470,7 @@ is not stored.
 | GET | `/api/health` | — | Liveness |
 | POST | `/api/route` | — | Route only |
 | POST | `/api/predict` | — | Predict from a supplied feature vector |
-| POST | `/api/route-and-predict` | optional | The main flow. Saves to history if logged in |
+| POST | `/api/route-and-predict` | optional | The main flow. Takes `selectedDepartureDate` (`yyyy-MM-dd`, today .. +6 days) and `selectedDepartureTime` (`HH:mm`). Saves to history if logged in |
 | GET | `/api/model-info` | — | Model name, accuracy, labels, feature importances |
 | POST | `/api/retrain-model` | **yes** | Regenerate the dataset and refit |
 | GET | `/api/users/me` | **yes** | Your profile |

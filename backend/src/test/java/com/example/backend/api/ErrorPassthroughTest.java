@@ -127,7 +127,7 @@ class ErrorPassthroughTest extends AbstractApiTest {
     @DisplayName("a missing origin is a 400 naming the field, not a 500")
     void validationFailureIsABadRequest() throws Exception {
         mockMvc.perform(jsonPost("/api/route-and-predict",
-                        new com.example.backend.dto.RouteRequestDto("  ", "Roskilde", "08:00")))
+                        new com.example.backend.dto.RouteRequestDto("  ", "Roskilde", null, "08:00")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Origin is required"));
     }

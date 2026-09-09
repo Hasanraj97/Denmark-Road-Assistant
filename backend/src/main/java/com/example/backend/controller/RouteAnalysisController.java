@@ -81,14 +81,19 @@ public class RouteAnalysisController {
 
         // Gather the raw facts, including the real forecast, and let the ML
         // service turn them into features with the same code it trained on.
-        var observation = routeObservationService.observe(route, request.selectedDepartureTime());
+        var observation = routeObservationService.observe(
+                route, request.selectedDepartureDate(), request.selectedDepartureTime());
         var prediction = mlServiceClient.predict(observation);
         var features = prediction.features();
 
         Long historyId = null;
         if (user != null) {
+            // Store the RESOLVED departure ("2026-09-15 17:00"), not the raw time
+            // the user typed. History then records the moment the grade was
+            // actually computed for, which is what makes an old entry readable.
+            String departureLabel = observation.departureIso().replace('T', ' ');
             historyId = routeHistoryService
-                    .saveAnalysis(user, routeDto, features, prediction, request.selectedDepartureTime())
+                    .saveAnalysis(user, routeDto, features, prediction, departureLabel)
                     .getId();
         }
 

@@ -169,6 +169,26 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
   protected readonly origin = signal('Copenhagen');
   protected readonly destination = signal('Roskilde');
   protected readonly selectedDepartureTime = signal('08:00');
+
+  /**
+   * The day to travel, as yyyy-MM-dd. Defaults to today.
+   *
+   * The app used to offer a time only, and the server guessed the date - today,
+   * or tomorrow if the time had already gone. That capped every question at 24
+   * hours ahead, which mattered because day_of_week and season are two of the
+   * model's nineteen features: neither could ever be varied, so you could not ask
+   * what a route looks like next Saturday.
+   */
+  protected readonly selectedDepartureDate = signal(RouteAnalysisPageComponent.isoDate(0));
+
+  /** Today. Nothing earlier is offered - you cannot forecast the past. */
+  protected readonly earliestDepartureDate = signal(RouteAnalysisPageComponent.isoDate(0));
+
+  /**
+   * The last day Open-Meteo will forecast for. Must match FORECAST_WINDOW_DAYS in
+   * the backend's RouteObservationService, which rejects anything later.
+   */
+  protected readonly latestDepartureDate = signal(RouteAnalysisPageComponent.isoDate(6));
   protected readonly loadingMap = signal(true);
   protected readonly analyzing = signal(false);
   protected readonly retraining = signal(false);
@@ -276,6 +296,7 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
         this.http.post<RouteAnalysisResponse>(this.backendUrlService.apiUrl('/route-and-predict'), {
           origin: this.origin().trim(),
           destination: this.destination().trim(),
+          selectedDepartureDate: this.selectedDepartureDate(),
           selectedDepartureTime: this.selectedDepartureTime()
         })
       );
@@ -346,6 +367,7 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
     this.origin.set(sample.origin);
     this.destination.set(sample.destination);
     this.selectedDepartureTime.set('08:00');
+    this.selectedDepartureDate.set(RouteAnalysisPageComponent.isoDate(0));
   }
 
   protected swapRoute(): void {
@@ -515,6 +537,51 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
 
   protected formatFeatureName(key: string): string {
     return key.replaceAll('_', ' ');
+  }
+
+  /**
+   * yyyy-MM-dd for today plus an offset, in the BROWSER's local timezone.
+   *
+   * Deliberately not toISOString(), which converts to UTC first and can therefore
+   * report yesterday or tomorrow depending on the hour and the user's offset -
+   * exactly the kind of quiet off-by-one-day bug this feature is meant to remove.
+   */
+  private static isoDate(offsetDays: number): string {
+    const date = new Date();
+    date.setDate(date.getDate() + offsetDays);
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${date.getFullYear()}-${month}-${day}`;
+  }
+
+  /** "Today, 5:00 PM" / "Sat 13 Sep, 5:00 PM" for the Route Overview panel. */
+  protected formatSelectedDeparture(): string {
+    const time = this.formatSelectedTime(this.selectedDepartureTime());
+    const chosen = this.selectedDepartureDate();
+
+    if (!chosen) {
+      return time;
+    }
+
+    if (chosen === RouteAnalysisPageComponent.isoDate(0)) {
+      return `Today, ${time}`;
+    }
+    if (chosen === RouteAnalysisPageComponent.isoDate(1)) {
+      return `Tomorrow, ${time}`;
+    }
+
+    const [year, month, day] = chosen.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    if (Number.isNaN(date.getTime())) {
+      return `${chosen}, ${time}`;
+    }
+
+    const label = date.toLocaleDateString(undefined, {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short'
+    });
+    return `${label}, ${time}`;
   }
 
   protected formatSelectedTime(value: string | undefined): string {

@@ -37,7 +37,10 @@ public class RouteAnalysisHistory {
     @Column(nullable = false)
     private double durationMinutes;
 
-    @Column(length = 10)
+    // Holds the RESOLVED departure, "yyyy-MM-dd HH:mm" (16 chars). It used to
+    // be length 10 and held a bare "08:00", because the app had no date at
+    // all. Rows written before that change still hold just a time.
+    @Column(length = 16)
     private String selectedDepartureTime;
 
     @Column(nullable = false, length = 40)

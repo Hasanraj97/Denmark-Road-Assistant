@@ -646,3 +646,53 @@ and regenerates from nothing in about five seconds.
 * `androidScheme: 'http'` served the app from a non-HTTPS origin, relying on the
   browser's localhost exemption to keep secure-context APIs such as geolocation
   working. Now `'https'`, Capacitor's default.
+
+---
+
+## Found by the user after the repair loop
+
+### You could only choose a time, never a date
+
+**What you saw.** The form offered a departure *time* and nothing else. There was
+no way to ask about next Saturday, or about a trip in January.
+
+**Why.** The request carried only a string like `"17:00"`, and the server guessed
+the date for you: today, or tomorrow if that time had already gone.
+
+```java
+LocalDate date = now.toLocalDate();
+if (chosen.isBefore(now.toLocalTime())) {
+    date = date.plusDays(1);
+}
+```
+
+**Why it mattered more than it looked.** `day_of_week` and `season` are two of the
+model's nineteen features. With no date they could only ever hold today's or
+tomorrow's value, so neither could be varied — and `season` in particular is what
+makes the model swing between grades. The app could not demonstrate its own most
+interesting behaviour.
+
+**Fix.** A date picker was added, and the resolved instant is now built from the
+date and the time together. The picker is limited to **today plus the next six
+days**, matching how far Open-Meteo forecasts, and a date outside that range is
+refused with a 400 that names the allowed window. That limit is deliberate: the
+app's central claim is that the weather behind every grade is a real forecast, so
+it declines to answer rather than silently substituting a seasonal average.
+`RouteObservationService.FORECAST_WINDOW_DAYS` is the single source of that number
+and `WeatherService` reads it, so the two cannot drift apart.
+
+History now stores the resolved departure (`2026-09-15 17:00`) instead of a bare
+time, so an old entry still says which day it was predicted for. The column was
+widened from 10 to 16 characters to fit.
+
+**Verified.** The same route at 08:00 on two different days returns
+`dayOfWeek: wednesday` with a 14.9 °C forecast and `dayOfWeek: saturday` with a
+13.9 °C forecast — different day, different real weather. A date nine days out
+returns 400 *"The weather forecast only reaches 2026-09-15…"*, and yesterday
+returns 400 *"That date has already passed."* Five tests cover the window
+boundaries and the rejections.
+
+*Files:* `dto/RouteRequestDto.java`, `routing/RouteObservationService.java`,
+`weather/WeatherService.java`, `entity/RouteAnalysisHistory.java`,
+`controller/RouteAnalysisController.java`,
+`frontend/src/app/route-analysis.page.{html,ts}`

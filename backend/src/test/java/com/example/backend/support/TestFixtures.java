@@ -55,7 +55,7 @@ public final class TestFixtures {
     }
 
     public static RouteRequestDto routeRequest() {
-        return new RouteRequestDto("Copenhagen", "Roskilde", "08:00");
+        return new RouteRequestDto("Copenhagen", "Roskilde", null, "08:00");
     }
 
     public static GeocodedLocation copenhagen() {

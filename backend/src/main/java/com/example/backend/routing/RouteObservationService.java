@@ -4,13 +4,17 @@ import com.example.backend.dto.RouteObservationDto;
 import com.example.backend.dto.WeatherReadingDto;
 import com.example.backend.weather.WeatherService;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 /**
  * Gathers the raw facts about a trip so the ML service can derive the features.
@@ -40,14 +44,28 @@ public class RouteObservationService {
 
     private static final ZoneId DENMARK = ZoneId.of("Europe/Copenhagen");
 
+    /**
+     * How many days ahead a trip may be planned, counting today as day one.
+     *
+     * <p>This is deliberately tied to how far Open-Meteo will forecast. The app
+     * promises that the weather behind every grade is a real forecast, so it
+     * refuses to answer for a day it cannot get one for, rather than quietly
+     * falling back to a seasonal average. {@link WeatherService} requests the
+     * same number of days.</p>
+     */
+    public static final int FORECAST_WINDOW_DAYS = 7;
+
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ISO_LOCAL_DATE;
+
     private final WeatherService weatherService;
 
     public RouteObservationService(WeatherService weatherService) {
         this.weatherService = weatherService;
     }
 
-    public RouteObservationDto observe(RouteComputation route, String selectedDepartureTime) {
-        LocalDateTime departure = resolveDeparture(selectedDepartureTime);
+    public RouteObservationDto observe(RouteComputation route, String selectedDepartureDate,
+                                       String selectedDepartureTime) {
+        LocalDateTime departure = resolveDeparture(selectedDepartureDate, selectedDepartureTime);
 
         // The midpoint is a better single weather sample than either endpoint for
         // a trip that may cross the country.
@@ -70,33 +88,60 @@ public class RouteObservationService {
     }
 
     /**
-     * Turns the time the user picked into a full date and time.
+     * Turns the day and time the user picked into one departure instant.
      *
-     * <p>The chosen time is taken to mean its next occurrence: today if it has
-     * not passed yet, otherwise tomorrow. Somebody setting "07:00" at nine in the
-     * evening means tomorrow morning, and that also keeps the request inside the
-     * window Open-Meteo can forecast.</p>
+     * <p>A missing date means today. A missing time means the current hour. The
+     * result always has minutes, seconds and nanoseconds zeroed, because the
+     * weather forecast and the model both work in whole hours.</p>
+     *
+     * @throws ResponseStatusException 400 if the date is in the past or beyond the
+     *         forecast window. Answering for a day we cannot get a real forecast
+     *         for would quietly break the app's central promise, so it is refused
+     *         with a message that says what the allowed range is.
      */
-    LocalDateTime resolveDeparture(String selectedDepartureTime) {
+    LocalDateTime resolveDeparture(String selectedDepartureDate, String selectedDepartureTime) {
         ZonedDateTime now = ZonedDateTime.now(DENMARK);
+        LocalTime chosenTime = parseTime(selectedDepartureTime, now.toLocalTime());
 
-        if (selectedDepartureTime == null || selectedDepartureTime.isBlank()) {
-            return now.toLocalDateTime().withMinute(0).withSecond(0).withNano(0);
+        if (selectedDepartureDate == null || selectedDepartureDate.isBlank()) {
+            return LocalDateTime.of(now.toLocalDate(), chosenTime).withMinute(0).withSecond(0).withNano(0);
         }
 
-        LocalTime chosen;
+        LocalDate chosenDate;
         try {
-            chosen = LocalTime.parse(selectedDepartureTime.trim());
+            chosenDate = LocalDate.parse(selectedDepartureDate.trim(), DATE);
         } catch (DateTimeParseException exception) {
-            return now.toLocalDateTime().withMinute(0).withSecond(0).withNano(0);
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "\"" + selectedDepartureDate + "\" is not a date. Use the format 2026-09-15.");
         }
 
-        LocalDate date = now.toLocalDate();
-        if (chosen.isBefore(now.toLocalTime())) {
-            date = date.plusDays(1);
+        LocalDate today = now.toLocalDate();
+        LocalDate lastAllowed = today.plusDays(FORECAST_WINDOW_DAYS - 1L);
+
+        if (chosenDate.isBefore(today)) {
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "That date has already passed. Pick a day between " + today + " and " + lastAllowed + ".");
         }
 
-        return LocalDateTime.of(date, chosen).withMinute(0).withSecond(0).withNano(0);
+        if (chosenDate.isAfter(lastAllowed)) {
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "The weather forecast only reaches " + lastAllowed + ", and this app will not grade a "
+                            + "route without a real forecast behind it. Pick a day between "
+                            + today + " and " + lastAllowed + ".");
+        }
+
+        return LocalDateTime.of(chosenDate, chosenTime).withMinute(0).withSecond(0).withNano(0);
+    }
+
+    private LocalTime parseTime(String selectedDepartureTime, LocalTime fallback) {
+        if (selectedDepartureTime == null || selectedDepartureTime.isBlank()) {
+            return fallback;
+        }
+        try {
+            return LocalTime.parse(selectedDepartureTime.trim());
+        } catch (DateTimeParseException exception) {
+            return fallback;
+        }
     }
 
     private static double round(double value) {
