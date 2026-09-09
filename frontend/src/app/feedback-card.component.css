@@ -5,7 +5,7 @@
 .card {
   padding: 22px;
   border-radius: 28px;
-  border: 1px solid rgba(27, 65, 122, 0.12);
+  border: 1px solid rgba(150, 185, 230, 0.12);
   background: rgba(247, 251, 255, 0.9);
   box-shadow: 0 24px 58px rgba(17, 42, 78, 0.14);
   backdrop-filter: blur(18px);
@@ -18,7 +18,7 @@
 
 .feedback-card h2 {
   margin: 0;
-  color: #173768;
+  color: #e9f0fa;
   font-size: 1.05rem;
 }
 
@@ -30,7 +30,7 @@
 }
 
 .feedback-note a {
-  color: #1f67c7;
+  color: #33d6c0;
   font-weight: 700;
   text-decoration: none;
 }
@@ -45,7 +45,7 @@
 .feedback-save {
   min-height: 46px;
   border-radius: 999px;
-  border: 1px solid rgba(28, 83, 150, 0.18);
+  border: 1px solid rgba(51, 214, 192, 0.18);
   font-weight: 700;
   cursor: pointer;
 }
@@ -53,27 +53,27 @@
 .feedback-choice {
   padding: 0 18px;
   background: rgba(242, 247, 255, 0.9);
-  color: #244572;
+  color: #e9f0fa;
 }
 
 .feedback-choice.active {
-  background: linear-gradient(135deg, #7ed6ff 0%, #5d9dff 100%);
-  color: #12325d;
+  background: linear-gradient(135deg, #7dd3fc 0%, #7dd3fc 100%);
+  color: #e9f0fa;
   box-shadow: 0 12px 24px rgba(72, 137, 221, 0.2);
 }
 
 .feedback-label {
   font-weight: 700;
-  color: #31517d;
+  color: #8ba0bd;
 }
 
 textarea {
   width: 100%;
   padding: 14px 16px;
   border-radius: 18px;
-  border: 1px solid rgba(28, 83, 150, 0.16);
-  background: rgba(255, 255, 255, 0.94);
-  color: #1b3357;
+  border: 1px solid rgba(51, 214, 192, 0.16);
+  background: rgba(27, 39, 57, 0.94);
+  color: #8ba0bd;
   resize: vertical;
   min-height: 110px;
   font: inherit;
@@ -82,7 +82,7 @@ textarea {
 .feedback-save {
   padding: 0 22px;
   justify-self: start;
-  background: linear-gradient(135deg, #1f67c7 0%, #53a4ff 100%);
+  background: linear-gradient(135deg, #33d6c0 0%, #53a4ff 100%);
   color: #f3f8ff;
 }
 

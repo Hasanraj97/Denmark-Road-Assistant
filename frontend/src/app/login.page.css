@@ -2,7 +2,7 @@
   display: block;
   min-height: 100dvh;
   background:
-    linear-gradient(180deg, rgba(226, 237, 255, 0.68) 0%, rgba(245, 249, 255, 0.72) 100%),
+    linear-gradient(180deg, rgba(20, 29, 44, 0.68) 0%, rgba(20, 29, 44, 0.72) 100%),
     url("/images/endless-country-road-stockcake.webp") center / cover no-repeat;
 }
 
@@ -17,9 +17,9 @@
   width: min(100%, 470px);
   padding: 28px;
   border-radius: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  background: rgba(248, 251, 255, 0.9);
-  box-shadow: 0 22px 56px rgba(20, 48, 82, 0.16);
+  border: 1px solid rgba(150, 185, 230, 0.16);
+  background: rgba(20, 29, 44, 0.9);
+  box-shadow: 0 22px 56px rgba(150, 185, 230, 0.16);
   backdrop-filter: blur(16px);
 }
 
@@ -27,8 +27,8 @@
   display: inline-flex;
   padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
-  color: #2b5d95;
+  background: rgba(27, 39, 57, 0.7);
+  color: #8ba0bd;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -37,13 +37,13 @@
 
 h1 {
   margin: 18px 0 10px;
-  color: #173765;
+  color: #e9f0fa;
   font-size: clamp(2.2rem, 6vw, 3rem);
 }
 
 p {
   margin: 0;
-  color: #48627e;
+  color: #8ba0bd;
   line-height: 1.7;
 }
 
@@ -52,13 +52,13 @@ p {
   margin-top: 18px;
   padding: 14px 16px;
   border-radius: 18px;
-  background: rgba(255, 231, 221, 0.82);
-  color: #d34f45;
+  background: rgba(251, 113, 133, 0.82);
+  color: #fb7185;
 }
 
 .auth-notice {
   background: rgba(219, 234, 254, 0.85);
-  color: #1d4f91;
+  color: #12a897;
   line-height: 1.5;
 }
 
@@ -74,12 +74,12 @@ p {
 }
 
 .auth-form span {
-  color: #547295;
+  color: #8ba0bd;
   font-weight: 700;
 }
 
 .field-error {
-  color: #d34f45;
+  color: #fb7185;
   font-size: 0.82rem;
   font-weight: 600;
 }
@@ -88,9 +88,9 @@ p {
   height: 50px;
   padding: 0 16px;
   border-radius: 16px;
-  border: 1px solid rgba(25, 50, 77, 0.12);
-  background: rgba(255, 255, 255, 0.95);
-  color: #173765;
+  border: 1px solid rgba(150, 185, 230, 0.12);
+  background: rgba(27, 39, 57, 0.95);
+  color: #e9f0fa;
 }
 
 .auth-form button {
@@ -98,7 +98,7 @@ p {
   margin-top: 8px;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(135deg, #2b7bd1 0%, #1f5eb0 100%);
+  background: linear-gradient(135deg, #33d6c0 0%, #12a897 100%);
   color: white;
   font-size: 1rem;
   font-weight: 800;
@@ -115,6 +115,6 @@ p {
 }
 
 .auth-alt a {
-  color: #1f5eb0;
+  color: #12a897;
   font-weight: 700;
 }

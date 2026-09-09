@@ -3,11 +3,11 @@
 }
 
 .weather-card {
-  border: 1px solid rgba(25, 50, 77, 0.1);
+  border: 1px solid rgba(150, 185, 230, 0.1);
   border-radius: 24px;
   padding: 18px;
-  background: rgba(248, 251, 255, 0.9);
-  box-shadow: 0 18px 36px rgba(25, 50, 77, 0.08);
+  background: rgba(20, 29, 44, 0.9);
+  box-shadow: 0 18px 36px rgba(150, 185, 230, 0.08);
   backdrop-filter: blur(10px);
 }
 
@@ -39,7 +39,7 @@
 .weather-card h2 {
   margin: 0;
   font-size: 1.05rem;
-  color: #17324f;
+  color: #e9f0fa;
 }
 
 .weather-spotlight {
@@ -50,9 +50,9 @@
   margin-bottom: 16px;
   padding: 18px;
   border-radius: 22px;
-  background: linear-gradient(135deg, rgba(230, 241, 255, 0.95) 0%, rgba(248, 251, 255, 0.92) 100%);
-  border: 1px solid rgba(42, 111, 190, 0.14);
-  box-shadow: 0 14px 28px rgba(42, 111, 190, 0.08);
+  background: linear-gradient(135deg, rgba(230, 241, 255, 0.95) 0%, rgba(20, 29, 44, 0.92) 100%);
+  border: 1px solid rgba(51, 214, 192, 0.14);
+  box-shadow: 0 14px 28px rgba(51, 214, 192, 0.08);
 }
 
 .weather-spotlight-copy {
@@ -65,8 +65,8 @@
   width: fit-content;
   padding: 7px 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  color: #2d5f96;
+  background: rgba(27, 39, 57, 0.82);
+  color: #8ba0bd;
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -74,7 +74,7 @@
 .weather-spotlight h3 {
   margin: 0;
   font-size: 1.15rem;
-  color: #17324f;
+  color: #e9f0fa;
 }
 
 .weather-spotlight p {
@@ -92,7 +92,7 @@
   gap: 6px;
   padding: 12px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(27, 39, 57, 0.78);
 }
 
 .weather-spotlight-icon {
@@ -102,7 +102,7 @@
 
 .weather-spotlight-meta strong {
   font-size: 1.4rem;
-  color: #17324f;
+  color: #e9f0fa;
 }
 
 .weather-spotlight-loading {
@@ -112,7 +112,7 @@
 .weather-note {
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(27, 39, 57, 0.75);
   font-size: 0.82rem;
   font-weight: 700;
   white-space: nowrap;
@@ -132,22 +132,22 @@
   gap: 6px;
   padding: 14px 12px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(25, 50, 77, 0.08);
+  background: rgba(27, 39, 57, 0.7);
+  border: 1px solid rgba(150, 185, 230, 0.08);
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .weather-hour-active {
-  border-color: rgba(42, 111, 190, 0.4);
+  border-color: rgba(51, 214, 192, 0.4);
   background: linear-gradient(180deg, rgba(224, 239, 255, 0.96) 0%, rgba(244, 249, 255, 0.92) 100%);
-  box-shadow: 0 12px 24px rgba(42, 111, 190, 0.16);
+  box-shadow: 0 12px 24px rgba(51, 214, 192, 0.16);
   transform: translateY(-2px);
 }
 
 .weather-hour-time {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #21415f;
+  color: #8ba0bd;
 }
 
 .weather-hour-icon {
@@ -157,7 +157,7 @@
 
 .weather-hour-temp {
   font-size: 1.2rem;
-  color: #17324f;
+  color: #e9f0fa;
 }
 
 .weather-hour-rain,
@@ -174,11 +174,11 @@
 .weather-fallback {
   padding: 16px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(27, 39, 57, 0.72);
 }
 
 .weather-fallback strong {
-  color: #17324f;
+  color: #e9f0fa;
 }
 
 .weather-fallback p {
@@ -251,13 +251,13 @@
   margin-top: 14px;
   padding: 14px 16px;
   border-radius: 18px;
-  border: 1px solid rgba(42, 111, 190, 0.18);
+  border: 1px solid rgba(51, 214, 192, 0.18);
   background: rgba(232, 243, 255, 0.72);
 }
 
 .weather-model-source strong {
   display: block;
-  color: #17324f;
+  color: #e9f0fa;
   font-size: 0.92rem;
 }
 
@@ -278,5 +278,5 @@
 }
 
 .weather-model-source-fallback p {
-  color: #6f5223;
+  color: #8ba0bd;
 }

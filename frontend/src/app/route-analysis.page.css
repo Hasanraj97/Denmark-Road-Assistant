@@ -1,21 +1,23 @@
 :host {
-  --bg: #eaf3ff;
-  --panel: rgba(248, 251, 255, 0.92);
-  --panel-strong: #ffffff;
-  --ink: #19324d;
-  --muted: #667b94;
-  --line: rgba(25, 50, 77, 0.1);
-  --teal: #2a6fbe;
-  --teal-deep: #194f91;
-  --green: #44a86d;
-  --orange: #dc8a2c;
-  --red: #d34f45;
-  --red-deep: #8e2f2c;
+  --bg: #0b111c;
+  --panel: rgba(20, 29, 44, 0.92);
+  --panel-strong: #1b2739;
+  --ink: #e9f0fa;
+  --muted: #8ba0bd;
+  --line: rgba(150, 185, 230, 0.1);
+  --teal: #33d6c0;
+  --teal-deep: #12a897;
+  --green: #4ade80;
+  --orange: #fbbf24;
+  --red: #fb7185;
+  --red-deep: #e11d48;
   display: block;
   position: relative;
   isolation: isolate;
   min-height: 100dvh;
-  background: linear-gradient(180deg, #dfeafd 0%, #edf5ff 46%, #f6faff 100%);
+  background: radial-gradient(1200px 700px at 12% -10%, #16304a 0%, transparent 60%),
+              radial-gradient(900px 600px at 92% 4%, #1a2b52 0%, transparent 58%),
+              linear-gradient(180deg, #0b111c 0%, #0d1524 55%, #0b111c 100%);
   color: var(--ink);
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   overflow-x: hidden;
@@ -23,27 +25,35 @@
 
 :host::before,
 :host::after {
-  content: "";
-  position: fixed;
   inset: 0;
-  pointer-events: none;
-  z-index: -2;
+  background:
+    linear-gradient(rgba(150, 185, 230, 0.05) 1px, transparent 1px) 0 0 / 100% 46px,
+    linear-gradient(90deg, rgba(150, 185, 230, 0.05) 1px, transparent 1px) 0 0 / 46px 100%,
+    radial-gradient(120% 90% at 50% 0%, transparent 40%, rgba(5, 9, 16, 0.72) 100%);
+  mask-image: radial-gradient(120% 85% at 50% 12%, #000 35%, transparent 78%);
 }
 
 :host::before {
   background:
-    linear-gradient(180deg, rgba(235, 244, 255, 0.2) 0%, rgba(235, 244, 255, 0.2) 100%),
-    url("/images/endless-country-road-stockcake.webp") center center / cover no-repeat;
-  transform: scale(1.06);
-  filter: blur(14px) saturate(1.05) brightness(1.04);
+    radial-gradient(620px 320px at 18% 22%, rgba(51, 214, 192, 0.20) 0%, transparent 70%),
+    radial-gradient(560px 300px at 78% 30%, rgba(139, 123, 255, 0.18) 0%, transparent 72%),
+    radial-gradient(700px 380px at 50% 88%, rgba(125, 211, 252, 0.12) 0%, transparent 70%);
+  filter: blur(28px);
+  /* A very slow drift. Long enough that it reads as depth rather than movement. */
+  animation: aurora-drift 44s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-drift {
+  from { transform: translate3d(-2%, -1%, 0) scale(1.05); }
+  to   { transform: translate3d(3%, 2%, 0) scale(1.12); }
 }
 
 :host::after {
   inset: 0;
   background:
-    radial-gradient(circle at 14% 28%, rgba(255, 241, 211, 0.7), transparent 14%),
-    radial-gradient(circle at 18% 34%, rgba(255, 248, 230, 0.42), transparent 18%),
-    linear-gradient(180deg, rgba(226, 237, 255, 0.58) 0%, rgba(241, 247, 255, 0.32) 44%, rgba(245, 249, 255, 0.56) 100%);
+    radial-gradient(circle at 14% 28%, rgba(251, 191, 36, 0.7), transparent 14%),
+    radial-gradient(circle at 18% 34%, rgba(251, 191, 36, 0.42), transparent 18%),
+    linear-gradient(180deg, rgba(20, 29, 44, 0.58) 0%, rgba(11, 17, 28, 0.32) 44%, rgba(20, 29, 44, 0.56) 100%);
   backdrop-filter: blur(3px);
   opacity: 1;
 }
@@ -92,24 +102,36 @@ p {
   align-items: center;
   padding: 8px 16px;
   border-radius: 999px;
-  border: 1px solid rgba(25, 50, 77, 0.12);
-  background: rgba(255, 255, 255, 0.56);
-  color: #2b5d95;
+  border: 1px solid rgba(51, 214, 192, 0.34);
+  background: rgba(51, 214, 192, 0.12);
+  color: #33d6c0;
   font-size: 0.86rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  box-shadow: 0 12px 28px rgba(25, 50, 77, 0.08);
+  box-shadow: 0 12px 28px rgba(150, 185, 230, 0.08);
 }
 
 .page-header h1 {
-  font-size: clamp(2.5rem, 5vw, 4.6rem);
+  font-size: clamp(2.6rem, 5.4vw, 5rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 0.94;
-  color: #122c4d;
+  letter-spacing: -0.035em;
+  line-height: 0.92;
   text-wrap: balance;
-  text-shadow: 0 8px 24px rgba(255, 255, 255, 0.28);
+  /* The one place the aurora is allowed to be loud. Falls back to plain ink
+     wherever background-clip: text is unsupported. */
+  color: #e9f0fa;
+  background: linear-gradient(103deg, #eaf6ff 0%, #33d6c0 44%, #8b7bff 78%, #eaf6ff 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: aurora-title 14s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-title {
+  from { background-position: 0% 50%; }
+  to   { background-position: 100% 50%; }
 }
 
 .page-subtitle {
@@ -150,7 +172,7 @@ p {
   border: 1px solid var(--line);
   border-radius: 26px;
   background: var(--panel);
-  box-shadow: 0 20px 50px rgba(33, 51, 66, 0.08);
+  box-shadow: 0 20px 50px rgba(5, 9, 16, 0.08);
   backdrop-filter: blur(10px);
   width: 100%;
   max-width: 100%;
@@ -210,9 +232,9 @@ p {
   display: inline-grid;
   place-items: center;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(27, 39, 57, 0.88);
   color: var(--ink);
-  box-shadow: 0 8px 20px rgba(33, 51, 66, 0.07);
+  box-shadow: 0 8px 20px rgba(5, 9, 16, 0.07);
 }
 
 .route-input-stack {
@@ -236,7 +258,7 @@ p {
   width: 100%;
   height: 54px;
   border-radius: 18px;
-  border: 1px solid rgba(33, 51, 66, 0.1);
+  border: 1px solid rgba(5, 9, 16, 0.1);
   background: var(--panel-strong);
   padding: 0 18px;
   font-size: 1rem;
@@ -245,8 +267,8 @@ p {
 }
 
 .route-input-stack input:focus {
-  border-color: rgba(23, 122, 114, 0.5);
-  box-shadow: 0 0 0 4px rgba(23, 122, 114, 0.1);
+  border-color: rgba(51, 214, 192, 0.5);
+  box-shadow: 0 0 0 4px rgba(51, 214, 192, 0.1);
 }
 
 .destination-wrap {
@@ -279,7 +301,7 @@ p {
   width: 100%;
   height: 48px;
   border-radius: 16px;
-  border: 1px solid rgba(33, 51, 66, 0.1);
+  border: 1px solid rgba(5, 9, 16, 0.1);
   background: var(--panel-strong);
   padding: 0 14px;
   color: var(--ink);
@@ -288,8 +310,8 @@ p {
 }
 
 .time-field input:focus {
-  border-color: rgba(23, 122, 114, 0.5);
-  box-shadow: 0 0 0 4px rgba(23, 122, 114, 0.1);
+  border-color: rgba(51, 214, 192, 0.5);
+  box-shadow: 0 0 0 4px rgba(51, 214, 192, 0.1);
 }
 
 .time-help {
@@ -308,13 +330,13 @@ p {
   width: fit-content;
   min-height: 46px;
   padding: 0 16px;
-  border: 1px solid rgba(42, 111, 190, 0.22);
+  border: 1px solid rgba(51, 214, 192, 0.22);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(27, 39, 57, 0.86);
   color: var(--teal-deep);
   font-size: 0.94rem;
   font-weight: 700;
-  box-shadow: 0 10px 24px rgba(20, 48, 82, 0.08);
+  box-shadow: 0 10px 24px rgba(150, 185, 230, 0.08);
   cursor: pointer;
 }
 
@@ -330,7 +352,7 @@ p {
 }
 
 .location-success {
-  color: #2f7b4d;
+  color: #22a35c;
   font-weight: 600;
 }
 
@@ -341,12 +363,12 @@ p {
   transform: translate(-50%, -50%);
   width: 44px;
   height: 44px;
-  border: 1px solid rgba(23, 122, 114, 0.12);
+  border: 1px solid rgba(51, 214, 192, 0.12);
   border-radius: 50%;
   background: white;
   color: var(--teal);
   font-size: 1.35rem;
-  box-shadow: 0 10px 20px rgba(33, 51, 66, 0.1);
+  box-shadow: 0 10px 20px rgba(5, 9, 16, 0.1);
   cursor: pointer;
 }
 
@@ -389,9 +411,9 @@ p {
   gap: 8px;
   align-items: center;
   padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(27, 39, 57, 0.92);
   border-radius: 16px;
-  box-shadow: 0 12px 24px rgba(33, 51, 66, 0.1);
+  box-shadow: 0 12px 24px rgba(5, 9, 16, 0.1);
 }
 
 .map-footer-grid {
@@ -410,7 +432,7 @@ p {
 .mini-card {
   border: 1px solid var(--line);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.62);
+  background: rgba(27, 39, 57, 0.62);
   padding: 16px;
   width: 100%;
   max-width: 100%;
@@ -473,7 +495,7 @@ p {
 .probability-bar {
   height: 8px;
   border-radius: 999px;
-  background: rgba(33, 51, 66, 0.1);
+  background: rgba(5, 9, 16, 0.1);
   overflow: hidden;
 }
 
@@ -487,19 +509,19 @@ p {
 }
 
 .probability-fill.good {
-  background: #4daf74;
+  background: #4ade80;
 }
 
 .probability-fill.moderate {
-  background: #de8a2f;
+  background: #fbbf24;
 }
 
 .probability-fill.poor {
-  background: #ce5a50;
+  background: #fb7185;
 }
 
 .probability-fill.very-poor {
-  background: #8e2f2c;
+  background: #e11d48;
 }
 
 .advisory-top {
@@ -532,27 +554,27 @@ p {
 }
 
 .condition-pill.good {
-  background: #4daf74;
+  background: #4ade80;
   color: white;
 }
 
 .condition-pill.moderate {
-  background: #de8a2f;
+  background: #fbbf24;
   color: white;
 }
 
 .condition-pill.poor {
-  background: #ce5a50;
+  background: #fb7185;
   color: white;
 }
 
 .condition-pill.very-poor {
-  background: #8e2f2c;
+  background: #e11d48;
   color: white;
 }
 
 .confidence-pill {
-  background: rgba(33, 51, 66, 0.07);
+  background: rgba(5, 9, 16, 0.07);
   color: var(--muted);
 }
 
@@ -564,7 +586,7 @@ p {
 }
 
 .advisory-copy {
-  color: #42515f;
+  color: #8ba0bd;
   line-height: 1.55;
   font-size: 1.05rem;
 }
@@ -577,8 +599,8 @@ p {
 }
 
 .advisory-tags span {
-  background: rgba(33, 51, 66, 0.07);
-  color: #4c5b68;
+  background: rgba(5, 9, 16, 0.07);
+  color: #8ba0bd;
   padding: 10px 14px;
   font-size: 0.88rem;
 }
@@ -628,7 +650,7 @@ p {
 .risk-meter {
   height: 8px;
   border-radius: 999px;
-  background: rgba(33, 51, 66, 0.1);
+  background: rgba(5, 9, 16, 0.1);
   overflow: hidden;
 }
 
@@ -666,7 +688,7 @@ p {
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.56);
+  background: rgba(27, 39, 57, 0.56);
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -690,9 +712,9 @@ p {
   margin-top: 4px;
   padding: 12px 16px;
   border-radius: 16px;
-  border: 1px solid rgba(42, 111, 190, 0.16);
-  background: rgba(255, 255, 255, 0.62);
-  color: #41597a;
+  border: 1px solid rgba(51, 214, 192, 0.16);
+  background: rgba(27, 39, 57, 0.62);
+  color: #8ba0bd;
   font-size: 0.92rem;
   line-height: 1.55;
   text-wrap: pretty;
@@ -701,9 +723,9 @@ p {
 .model-pill {
   padding: 10px 16px;
   border-radius: 999px;
-  border: 1px dashed rgba(42, 111, 190, 0.5);
+  border: 1px dashed rgba(51, 214, 192, 0.5);
   background: rgba(232, 243, 255, 0.8);
-  color: #1d4f91;
+  color: #12a897;
   font-size: 0.86rem;
   font-weight: 700;
 }
@@ -854,7 +876,7 @@ button:disabled {
     gap: 8px;
     padding: 10px 12px;
     border-radius: 16px;
-    background: rgba(255, 255, 255, 0.62);
+    background: rgba(27, 39, 57, 0.62);
   }
 
   .route-chip strong {
@@ -995,8 +1017,8 @@ button:disabled {
 .incident {
   padding: 12px 14px;
   border-radius: 14px;
-  border: 1px solid rgba(25, 50, 77, 0.1);
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(150, 185, 230, 0.1);
+  background: rgba(27, 39, 57, 0.72);
 }
 
 .incident-head {
@@ -1010,7 +1032,7 @@ button:disabled {
 .incident-category {
   font-weight: 700;
   font-size: 0.9rem;
-  color: #8e2f2c;
+  color: #8ba0bd;
 }
 
 .incident-distance {

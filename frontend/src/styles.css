@@ -2,8 +2,17 @@
 
 html,
 body {
-  margin: 0;
-  min-height: 100%;
+  min-height: 100dvh;
+
+  /* Aurora Slate. The page paints its own ground explicitly: html, body and
+     app-root were all transparent before, so anywhere the page did not cover
+     fell through to the host's canvas - white in a plain browser, BLACK in a
+     dark-themed one or an embedded WebView. */
+  background-color: #0b111c;
+  color: #e9f0fa;
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body {
@@ -49,7 +58,12 @@ body {
   to   { transform: translateX(100%); }
 }
 
-.ra-card {
+.ra-card,
+.incidents-card {
+  /* These sections had NO padding of their own - the other cards get theirs from
+     their specific class rules - so their content sat flush against the card
+     edge and the first letter of every eyebrow was clipped by overflow:hidden. */
+  padding: 22px 24px 24px;
   animation: ra-rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
@@ -114,8 +128,8 @@ body {
   padding: 7px 13px;
   border-radius: 999px;
   border: 1px solid var(--line, rgba(25, 50, 77, 0.1));
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--teal-deep, #194f91);
+  background: rgba(51, 214, 192, 0.10);
+  color: var(--ra-teal, #33d6c0);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -123,8 +137,8 @@ body {
 
 .ra-chip:hover {
   transform: translateY(-1px);
-  border-color: rgba(42, 111, 190, 0.45);
-  background: #fff;
+  border-color: rgba(51, 214, 192, 0.55);
+  background: rgba(51, 214, 192, 0.18);
 }
 
 /* --- model strip --------------------------------------------------------- */
@@ -145,7 +159,7 @@ body {
   gap: 2px;
   padding: 8px 13px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.66);
+  background: rgba(11, 17, 28, 0.55);
   border: 1px solid var(--line, rgba(25, 50, 77, 0.08));
 }
 
@@ -215,7 +229,7 @@ body {
   position: relative;
   height: 9px;
   border-radius: 999px;
-  background: rgba(25, 50, 77, 0.08);
+  background: rgba(150, 185, 230, 0.12);
   overflow: hidden;
 }
 
@@ -224,7 +238,7 @@ body {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #7fb3e8 0%, #2a6fbe 100%);
+  background: linear-gradient(90deg, #5eead4 0%, #33d6c0 55%, #8b7bff 100%);
   /* The width comes from the model, so the bar grows into place on arrival. */
   animation: ra-grow 0.75s cubic-bezier(0.22, 0.61, 0.36, 1) both;
   transition: width 0.5s ease;
@@ -234,7 +248,7 @@ body {
 
 /* The grade the model actually chose is the one to look at. */
 .ra-prob.is-predicted .ra-prob-fill {
-  background: linear-gradient(90deg, #46b07a 0%, #1f7d4d 100%);
+  background: linear-gradient(90deg, #86efac 0%, #4ade80 100%);
 }
 
 .ra-prob-value,
@@ -245,7 +259,7 @@ body {
 }
 
 .ra-prob.is-predicted .ra-prob-value {
-  color: #1f7d4d;
+  color: #4ade80;
   font-weight: 800;
 }
 
@@ -261,7 +275,7 @@ body {
 .ra-feature {
   padding: 10px 12px;
   border-radius: 13px;
-  background: rgba(255, 255, 255, 0.68);
+  background: rgba(11, 17, 28, 0.5);
   border: 1px solid var(--line, rgba(25, 50, 77, 0.08));
   animation: ra-rise 0.45s ease both;
 }
@@ -289,4 +303,135 @@ body {
   .ra-prob { grid-template-columns: 78px 1fr 46px; }
   .ra-imp { grid-template-columns: 104px 1fr 42px; }
   .ra-feature-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+}
+
+
+/* ==========================================================================
+   Aurora Slate - shared surface, type and motion language
+   ========================================================================== */
+
+:root {
+  --ra-base: #0b111c;
+  --ra-surface: #141d2c;
+  --ra-surface-hi: #1b2739;
+  --ra-ink: #e9f0fa;
+  --ra-muted: #8ba0bd;
+  --ra-line: rgba(150, 185, 230, 0.14);
+  --ra-teal: #33d6c0;
+  --ra-violet: #8b7bff;
+  --ra-amber: #fbbf24;
+  --ra-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* --- surfaces ------------------------------------------------------------ */
+
+.card {
+  background: linear-gradient(180deg, rgba(27, 39, 57, 0.86) 0%, rgba(20, 29, 44, 0.92) 100%) !important;
+  border: 1px solid var(--ra-line) !important;
+  box-shadow: 0 20px 44px rgba(3, 6, 12, 0.5) !important;
+  backdrop-filter: blur(10px);
+}
+
+/* A hairline of aurora along the top edge of every panel. Small detail, but it
+   is what makes the surfaces read as one designed system rather than boxes. */
+.card {
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(51, 214, 192, 0.55), transparent);
+  opacity: 0.9;
+}
+
+/* --- type ---------------------------------------------------------------- */
+
+h1, h2 {
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: 1.32rem;
+}
+
+/* Numbers line up in columns. Essential anywhere figures are compared. */
+.ra-prob-value, .ra-imp-value, .ra-stat strong,
+.ra-feature-value, .overview-grid strong, .confidence-chip {
+  font-variant-numeric: tabular-nums;
+}
+
+.weather-eyebrow {
+  color: var(--ra-teal) !important;
+  letter-spacing: 0.14em !important;
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+}
+
+/* --- form controls ------------------------------------------------------- */
+
+input[type="text"], input[type="time"], input[type="date"],
+input[type="email"], input[type="password"], textarea, select {
+  background: rgba(11, 17, 28, 0.62) !important;
+  border: 1px solid var(--ra-line) !important;
+  color: var(--ra-ink) !important;
+  border-radius: 14px !important;
+  transition: border-color 0.2s var(--ra-ease), box-shadow 0.2s var(--ra-ease);
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none !important;
+  border-color: rgba(51, 214, 192, 0.7) !important;
+  box-shadow: 0 0 0 4px rgba(51, 214, 192, 0.14) !important;
+}
+
+::placeholder { color: rgba(139, 160, 189, 0.65); }
+
+/* The native date and time pickers ship black glyphs; invert them so they are
+   visible on a dark field. */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) opacity(0.55);
+  cursor: pointer;
+}
+
+/* --- motion -------------------------------------------------------------- */
+
+@keyframes ra-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.995); }
+  to   { opacity: 1; transform: none; }
+}
+
+.card {
+  animation: ra-in 0.55s var(--ra-ease) both;
+}
+
+.left-column .card:nth-of-type(2) { animation-delay: 0.06s; }
+.left-column .card:nth-of-type(3) { animation-delay: 0.12s; }
+.left-column .card:nth-of-type(4) { animation-delay: 0.18s; }
+.right-column .card:nth-of-type(1) { animation-delay: 0.08s; }
+.right-column .card:nth-of-type(2) { animation-delay: 0.14s; }
+.right-column .card:nth-of-type(3) { animation-delay: 0.20s; }
+.right-column .card:nth-of-type(4) { animation-delay: 0.26s; }
+
+button {
+  transition: transform 0.18s var(--ra-ease), box-shadow 0.18s var(--ra-ease),
+              background-color 0.18s var(--ra-ease), border-color 0.18s var(--ra-ease);
+}
+
+button:not(:disabled):hover { transform: translateY(-1px); }
+button:not(:disabled):active { transform: translateY(0); }
+
+/* Everything above is decoration. Anyone who has asked their system for less
+   motion gets none of it - moving interfaces are genuinely unpleasant with a
+   vestibular disorder, so this is an accessibility requirement. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
