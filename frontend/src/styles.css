@@ -8,4 +8,17 @@ body {
 
 body {
   min-height: 100dvh;
+
+  /* Paint an explicit page background.
+     Nothing outside the route-analysis component used to paint one: html, body
+     and app-root were all fully transparent, and the only background came from
+     a position:fixed pseudo-element inside that one component. Anywhere that
+     pseudo-element did not cover, the page fell through to whatever colour the
+     host happened to use for its canvas - white in a plain desktop browser, but
+     BLACK in a dark-themed browser, in an embedded WebView, and in the Android
+     app. Setting it here means the page looks the same everywhere and does not
+     depend on the host's default. The colour matches the top of the app's own
+     gradient. */
+  background-color: #dfeafd;
+  color-scheme: light;
 }

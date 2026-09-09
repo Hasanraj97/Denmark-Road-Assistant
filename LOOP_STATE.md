@@ -11,9 +11,9 @@ resume from the phase named below. Do not restart from Phase 0.
 
 | | |
 |---|---|
-| **Current phase** | Phase 9 — final sweep |
-| **Phases complete** | 0, 1, 2, 3, 4, 5, 6, 7, 8 |
-| **Tests** | **383 passing** — 76 backend (JUnit) + 307 ML (pytest) |
+| **Current phase** | **COMPLETE** — all phases done, suite green twice |
+| **Phases complete** | 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 |
+| **Tests** | **384 passing** — 77 backend (JUnit) + 307 ML (pytest) |
 | **Build** | frontend 556.48 kB, inside the 560 kB budget |
 
 ### Commits
@@ -271,7 +271,7 @@ backend suite now guards them.
 | V5 | backend starts with no MySQL | ✅ |
 | V6 | `GET /api/health` ok | ✅ |
 | V7 | `npm ci` + `npm run build` inside budget | ✅ 556.48 kB / 560 kB |
-| V8 | `npm start` serves, map renders | ⏳ final sweep |
+| V8 | `npm start` serves, map renders | ✅ 14/14 tiles, 3 route polylines |
 | V9 | signup → login → analyse → history | ✅ |
 | V10 | change email, protected endpoint still works | ✅ |
 | V11 | ML down → real error | ✅ |
@@ -281,6 +281,110 @@ backend suite now guards them.
 | V15 | prediction weather = real Open-Meteo | ✅ exact |
 | V16 | retrain rejects anonymous | ✅ 401 |
 | V17 | model-info exposes no paths | ✅ |
-| V18 | prod profile refuses default secret | ⏳ final sweep |
+| V18 | prod profile refuses default secret | ✅ both missing and leaked |
 | V19 | no junk in `git ls-files` | ✅ |
 | V20 | all four documents current | ✅ |
+
+---
+
+## PHASE 9 — FINAL SWEEP ✅
+
+Run from a clean state: the model, metadata, dataset and H2 database were all
+deleted, then everything was brought up with `./start-all.sh`.
+
+```
+Denmark Road Assistant
+======================
+
+1/3  ML service (port 8000)
+     first start trains the model - this takes a few seconds
+  OK  ML service is up  (http://127.0.0.1:8000/health)
+2/3  Backend (port 8080)
+  OK  Backend is up  (http://127.0.0.1:8080/api/health)
+3/3  Frontend (port 4200)
+  OK  Frontend is up  (http://localhost:4200)
+
+All three services are running.
+    Open  http://localhost:4200
+
+Shutting down...
+Stopped. Logs are in logs/
+```
+
+**Green twice in a row:** 77 backend + 307 ML tests, and a 556.52 kB frontend
+build, on two consecutive runs.
+
+### Three defects found by running the finished system, not by reading it
+
+1. **You could not delete an analysis you had rated.** `route_feedback` has a
+   NOT NULL foreign key to `route_analysis_history`, and `deleteHistory` removed
+   only the analysis. Fixed by removing the feedback first; covered by a new test.
+2. **Both start scripts hung waiting for the frontend.** The Angular dev server
+   binds **IPv6 only** (`[::1]:4200`), so the `127.0.0.1` health check never
+   succeeded even though the server was up. They would have declared a healthy
+   frontend dead after 180 s. Now they check `localhost` for the frontend.
+3. **The page had no background at all.** `html`, `body` and `app-root` were all
+   transparent; the only background came from a `position: fixed` pseudo-element
+   inside one component. Anywhere it did not cover, the page fell through to the
+   host's canvas colour — white in a plain browser, but **black** in a
+   dark-themed browser, an embedded WebView, and the Android app. `body` now
+   paints `#dfeafd` explicitly.
+
+---
+
+## CLOSING SUMMARY
+
+### What is done
+
+All 20 defects from the brief, plus the most serious of the 79 found by the
+second audit and 3 more found by running the finished system.
+
+The three headline outcomes:
+
+* **The system runs from one command on a clean machine.** `./start-all.sh` (or
+  `.ps1`) brings up all three services in order, with no database to install and
+  no configuration to write.
+* **The machine learning is defensible.** One feature definition instead of two,
+  real Open-Meteo weather driving the prediction, all five grades reachable
+  (Very Poor went from f1 **0.00** to **0.880**), accuracy 0.7788 → **0.8546**,
+  the model artefact 82 MB → **8.9 MB**, and explanations that are measured from
+  the fitted model rather than written by hand.
+* **The story it tells is true.** Real weather, modelled road grade — stated
+  consistently in the frontend, the backend and the ML service, with an honest
+  LIMITATIONS section in `MODEL_EVALUATION.md` that says plainly the accuracy is
+  partly circular and what real validation would need.
+
+384 automated tests, none touching the network.
+
+### Deliberately left undone
+
+* **No APK was built.** No Android SDK on this machine. The configuration is
+  repaired and README §8 gives the exact commands, but `npx cap sync android`
+  and a Gradle build remain unverified here.
+* **Gradle stays at 8.9.** It supports up to JDK 22, and Android Studio builds
+  with its own bundled JDK, so this is documented in the troubleshooting section
+  rather than changed. Bumping a build I cannot run is a worse risk than the one
+  it removes.
+* **The 36 "minor" audit findings** are recorded in `.audit/findings.md` but not
+  all fixed — mostly dead CSS, unused component members, and cosmetic issues.
+* **`accident_risk_score` is still derived from three other features** and then
+  given to the model alongside them. It is the single most important feature at
+  0.2465, which overstates it. Fixing it means redesigning the feature set;
+  it is written up as limitation 4 instead.
+
+### The three things I would do next
+
+1. **Replace one derived feature with real data.** `traffic_level` is the second
+   biggest lever in the model and is currently an assumption. Vejdirektoratet
+   publishes traffic counts; wiring even one real feed in would move this from a
+   demonstration towards something defensible, and would make a strong
+   dissertation chapter on its own.
+2. **Check the confidence figure is honest.** The app tells users "86%
+   confident" and nothing anywhere tests whether that is true. A reliability
+   diagram over the test set would show whether the probabilities are calibrated;
+   Random Forests are usually overconfident, and if so, saying so is better than
+   quietly displaying a number that does not mean what it appears to.
+3. **Fix `accident_risk_score`, then re-measure.** Drop it (or drop its three
+   parents) and retrain. If accuracy barely moves, the feature importances
+   currently reported in the dissertation are misleading and the cleaner model is
+   the one to write about.
