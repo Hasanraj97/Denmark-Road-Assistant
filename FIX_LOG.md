@@ -777,3 +777,46 @@ accessible name either, so a screen reader announced the origin field as
 "Roskilde". Both are fixed, and the inputs now carry proper `aria-label`s.
 
 *Files:* `frontend/src/app/route-analysis.page.{html,ts}`
+
+### The UI hid most of what the app had already computed
+
+**What you saw.** A screenshot of another build of this project showed grade
+probability bars, a grid of derived features, feature-importance bars, sample
+route buttons and a retrain control. This build showed none of them.
+
+**Why.** Not because the data was missing. `route-analysis.page.ts` already
+declared `sampleRoutes`, `applySample`, `retrainModel`, `topFeatureImportances`,
+and every response already carried `classProbabilities` and the full nineteen
+`features`. **The template simply never rendered any of it** - the audit had
+flagged exactly this as "9 unreferenced component members". The model was
+explaining itself into a void.
+
+(For the record: the screenshots were from a different copy of the app, not this
+repository at an earlier commit. They show accuracy 78%, the pre-repair
+disclaimer wording, and a season-guessed 8.22 °C spring temperature - all of
+which this build had already moved past.)
+
+**Fix.** Four sections added, all bound to data that already existed:
+
+* **Grade Probabilities** - all five grades with animated bars, the predicted one
+  picked out in green. Shows when the model is torn between two neighbours.
+* **Derived Route Features** - all nineteen inputs as a grid. This is the
+  difference between "the model said Moderate" and an explainable system.
+* **Top Feature Importance** - what matters across the whole forest, captioned to
+  distinguish it from the per-trip explanation.
+* **Sample routes and the model strip** - one-click example journeys, plus model
+  name, training rows and accuracy. The retrain button only appears when logged
+  in, because retraining now requires authentication.
+
+**Motion.** Cards rise and fade in with a slight stagger, bars grow from zero,
+tiles and chips lift on hover. All of it sits behind
+`@media (prefers-reduced-motion: reduce)`, which switches every animation off -
+that is an accessibility requirement, not a nicety, and `:focus-visible` rings
+were added for keyboard users at the same time.
+
+**Where the CSS lives, and why.** In the *global* stylesheet, not
+`route-analysis.page.css`. That component's stylesheet is already 18 kB against a
+16 kB warning and 20 kB error budget, so putting several more sections in it
+would have failed the build outright. Everything is namespaced `ra-`.
+
+*Files:* `frontend/src/app/route-analysis.page.{html,ts}`, `frontend/src/styles.css`

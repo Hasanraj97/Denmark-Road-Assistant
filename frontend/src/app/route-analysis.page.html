@@ -108,6 +108,15 @@
               />
             </div>
 
+            <div class="ra-samples">
+              <span class="ra-samples-label">Try one</span>
+              @for (sample of sampleRoutes; track sample.origin + sample.destination) {
+                <button type="button" class="ra-chip" (click)="applySample(sample)">
+                  {{ sample.origin }} &rarr; {{ sample.destination }}
+                </button>
+              }
+            </div>
+
             <div class="location-actions">
               <button
                 type="button"
@@ -141,6 +150,23 @@
             {{ routeError() }}
           </p>
         }
+        <div class="ra-model-strip">
+          @if (modelInfo(); as info) {
+            <div class="ra-stat"><span>Model</span><strong>{{ info.modelName }}</strong></div>
+            <div class="ra-stat"><span>Training rows</span><strong>{{ info.sampleCount }}</strong></div>
+            <div class="ra-stat"><span>Accuracy</span><strong>{{ (info.accuracy * 100).toFixed(1) }}%</strong></div>
+          } @else {
+            <div class="ra-stat"><span>Model</span><strong>loading&hellip;</strong></div>
+          }
+
+          @if (isLoggedIn()) {
+            <button type="button" class="ra-retrain" [disabled]="retraining()" (click)="retrainModel()">
+              {{ retraining() ? 'Retraining…' : 'Retrain model' }}
+            </button>
+          } @else {
+            <span class="ra-retrain-hint">Log in to retrain</span>
+          }
+        </div>
       </section>
 
       <section class="card map-card">
@@ -188,6 +214,53 @@
             }
           </article>
         </div>
+      </section>
+
+      <section class="card ra-card">
+        <p class="weather-eyebrow">HOW SURE THE MODEL IS</p>
+        <h2>Grade Probabilities</h2>
+
+        @if (analysis()) {
+          <ul class="ra-prob-list">
+            @for (row of probabilityRows(); track row.label) {
+              <li class="ra-prob" [class.is-predicted]="row.predicted">
+                <span class="ra-prob-name">{{ row.label }}</span>
+                <span class="ra-prob-track">
+                  <span class="ra-prob-fill" [style.width.%]="row.percent"></span>
+                </span>
+                <span class="ra-prob-value">{{ row.percent }}%</span>
+              </li>
+            }
+          </ul>
+          <p class="incident-note">
+            The model spreads its confidence across all five grades. A close split between
+            two neighbouring grades means the route sits near a boundary.
+          </p>
+        } @else {
+          <p class="empty-text">Analyze a route to see how the model split its confidence.</p>
+        }
+      </section>
+
+      <section class="card ra-card">
+        <p class="weather-eyebrow">PREDICTION INPUTS</p>
+        <h2>Derived Route Features</h2>
+
+        @if (analysis()) {
+          <div class="ra-feature-grid">
+            @for (feature of featureRows(); track feature.key) {
+              <div class="ra-feature">
+                <span class="ra-feature-label">{{ feature.label }}</span>
+                <strong class="ra-feature-value">{{ feature.value }}</strong>
+              </div>
+            }
+          </div>
+          <p class="incident-note">
+            All nineteen values the model actually received. The weather ones are the real
+            Open-Meteo forecast; the rest are derived from the route and the departure time.
+          </p>
+        } @else {
+          <p class="empty-text">Analyze a route to see the exact inputs behind the grade.</p>
+        }
       </section>
     </div>
 
@@ -275,6 +348,31 @@
           }
         } @else {
           <p class="empty-text">Analyze a route to see reported roadworks and incidents.</p>
+        }
+      </section>
+
+      <section class="card ra-card">
+        <p class="weather-eyebrow">MODEL INFLUENCE</p>
+        <h2>Top Feature Importance</h2>
+
+        @if (importanceRows().length) {
+          <ul class="ra-imp-list">
+            @for (row of importanceRows(); track row.name) {
+              <li class="ra-imp">
+                <span class="ra-imp-name">{{ row.name }}</span>
+                <span class="ra-imp-track">
+                  <span class="ra-imp-fill" [style.width.%]="row.percent * 4"></span>
+                </span>
+                <span class="ra-imp-value">{{ row.percent }}%</span>
+              </li>
+            }
+          </ul>
+          <p class="incident-note">
+            Measured across the whole trained forest &mdash; which inputs matter in general,
+            not for this one trip. "What Shaped This Advisory" shows the per-trip picture.
+          </p>
+        } @else {
+          <p class="empty-text">Model details are loading&hellip;</p>
         }
       </section>
 

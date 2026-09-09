@@ -456,6 +456,68 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
     return Math.round((confidence ?? 0) * 100);
   }
 
+  /** The five grades in their natural order, with the model's probability for each. */
+  protected readonly probabilityRows = computed(() => {
+    const probabilities = this.analysis()?.prediction.classProbabilities ?? {};
+    const order = ['Excellent', 'Good', 'Moderate', 'Poor', 'Very Poor'];
+    return order.map((label) => ({
+      label,
+      percent: Math.round((probabilities[label] ?? 0) * 1000) / 10,
+      predicted: label === this.analysis()?.prediction.roadConditionLabel
+    }));
+  });
+
+  /**
+   * Every feature the model was given, as readable label/value pairs.
+   *
+   * These are the actual nineteen inputs behind the grade. Showing them is the
+   * difference between "the model said Moderate" and an explainable system.
+   */
+  protected readonly featureRows = computed(() => {
+    const features = this.analysis()?.features;
+    if (!features) {
+      return [];
+    }
+    const units: Record<string, string> = {
+      distanceKm: ' km',
+      estimatedDurationMin: ' min',
+      avgSpeedKmh: ' km/h',
+      rainfallMm: ' mm',
+      temperatureC: ' °C',
+      windSpeedKmh: ' km/h'
+    };
+    return Object.entries(features as unknown as Record<string, string | number>)
+      .map(([key, value]) => ({
+        key,
+        label: key
+          .replace(/([A-Z])/g, ' $1')
+          .replace(/^./, (c) => c.toUpperCase())
+          .trim(),
+        value: typeof value === 'number'
+          ? `${Math.round(value * 100) / 100}${units[key] ?? ''}`
+          : String(value).replace(/_/g, ' ')
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  });
+
+  /** Feature importances as percentages, for the bar chart. */
+  protected readonly importanceRows = computed(() =>
+    this.topFeatureImportances().map(([name, weight]) => ({
+      // The model's own column names are snake_case with unit suffixes, e.g.
+      // "avg_speed_kmh". Title-casing the lot turns that into "Avg Speed Kmh",
+      // so units are spelled out and only the first letter is capitalised.
+      name: name
+        .replace(/_kmh/g, ' km/h')
+        .replace(/_mm/g, ' mm')
+        .replace(/_c/g, ' °C')
+        .replace(/_min/g, ' min')
+        .replace(/_km/g, ' km')
+        .replace(/_/g, ' ')
+        .replace(/^./, (c) => c.toUpperCase()),
+      percent: Math.round(weight * 1000) / 10
+    }))
+  );
+
   /** Real reported events on this route, closest first. Empty when none. */
   protected incidents(): RouteIncident[] {
     return this.analysis()?.incidents ?? [];

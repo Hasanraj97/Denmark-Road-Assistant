@@ -22,3 +22,271 @@ body {
   background-color: #dfeafd;
   color-scheme: light;
 }
+
+/* ==========================================================================
+   Route-analysis presentation layer
+   --------------------------------------------------------------------------
+   These live in the GLOBAL stylesheet rather than route-analysis.page.css on
+   purpose. That component's stylesheet is already 18 kB against a 16 kB warning
+   and 20 kB error budget, so adding several more sections to it would fail the
+   production build. Everything here is namespaced `ra-` so nothing leaks into
+   another page by accident.
+
+   The custom properties (--ink, --muted, --teal ...) are declared on the
+   route-analysis component's :host and inherit down to these elements, with
+   literal fallbacks so the rules still make sense anywhere else.
+   ========================================================================== */
+
+/* --- motion -------------------------------------------------------------- */
+
+@keyframes ra-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes ra-sweep {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+.ra-card {
+  animation: ra-rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* A gentle stagger so the panels arrive in sequence instead of all at once. */
+.ra-card:nth-of-type(1) { animation-delay: 0.04s; }
+.ra-card:nth-of-type(2) { animation-delay: 0.10s; }
+.ra-card:nth-of-type(3) { animation-delay: 0.16s; }
+
+.ra-card,
+.ra-chip,
+.ra-feature,
+.ra-retrain {
+  transition: transform 0.22s ease, box-shadow 0.22s ease,
+              border-color 0.22s ease, background-color 0.22s ease;
+}
+
+.ra-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 44px rgba(16, 39, 76, 0.1);
+}
+
+/* Anyone who has asked their system to reduce motion gets none of it. This is
+   not decoration - vestibular disorders make large moving UI genuinely
+   unpleasant, and honouring the preference is part of doing this properly. */
+@media (prefers-reduced-motion: reduce) {
+  .ra-card,
+  .ra-prob-fill,
+  .ra-imp-fill,
+  .ra-feature {
+    animation: none !important;
+    transition: none !important;
+  }
+  .ra-card:hover { transform: none; }
+}
+
+/* Visible keyboard focus everywhere these controls appear. */
+.ra-chip:focus-visible,
+.ra-retrain:focus-visible {
+  outline: 3px solid rgba(42, 111, 190, 0.55);
+  outline-offset: 2px;
+}
+
+/* --- sample route chips -------------------------------------------------- */
+
+.ra-samples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.ra-samples-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted, #667b94);
+}
+
+.ra-chip {
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--line, rgba(25, 50, 77, 0.1));
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--teal-deep, #194f91);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ra-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(42, 111, 190, 0.45);
+  background: #fff;
+}
+
+/* --- model strip --------------------------------------------------------- */
+
+.ra-model-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line, rgba(25, 50, 77, 0.1));
+}
+
+.ra-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 13px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid var(--line, rgba(25, 50, 77, 0.08));
+}
+
+.ra-stat span {
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted, #667b94);
+}
+
+.ra-stat strong {
+  font-size: 0.92rem;
+  color: var(--ink, #19324d);
+}
+
+.ra-retrain {
+  margin-left: auto;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(42, 111, 190, 0.32);
+  background: rgba(42, 111, 190, 0.08);
+  color: var(--teal-deep, #194f91);
+  font-weight: 700;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.ra-retrain:hover:not(:disabled) { background: rgba(42, 111, 190, 0.16); }
+.ra-retrain:disabled { opacity: 0.55; cursor: progress; }
+
+.ra-retrain-hint {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--muted, #667b94);
+}
+
+/* --- grade probabilities ------------------------------------------------- */
+
+.ra-prob-list,
+.ra-imp-list {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.ra-prob,
+.ra-imp {
+  display: grid;
+  grid-template-columns: 92px 1fr 52px;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.86rem;
+}
+
+.ra-imp { grid-template-columns: 128px 1fr 46px; }
+
+.ra-prob-name,
+.ra-imp-name { color: var(--ink, #19324d); }
+
+
+.ra-prob.is-predicted .ra-prob-name { font-weight: 800; }
+
+.ra-prob-track,
+.ra-imp-track {
+  position: relative;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(25, 50, 77, 0.08);
+  overflow: hidden;
+}
+
+.ra-prob-fill,
+.ra-imp-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7fb3e8 0%, #2a6fbe 100%);
+  /* The width comes from the model, so the bar grows into place on arrival. */
+  animation: ra-grow 0.75s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  transition: width 0.5s ease;
+}
+
+@keyframes ra-grow { from { transform: scaleX(0); transform-origin: left; } }
+
+/* The grade the model actually chose is the one to look at. */
+.ra-prob.is-predicted .ra-prob-fill {
+  background: linear-gradient(90deg, #46b07a 0%, #1f7d4d 100%);
+}
+
+.ra-prob-value,
+.ra-imp-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted, #667b94);
+}
+
+.ra-prob.is-predicted .ra-prob-value {
+  color: #1f7d4d;
+  font-weight: 800;
+}
+
+/* --- derived features grid ----------------------------------------------- */
+
+.ra-feature-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 10px;
+}
+
+.ra-feature {
+  padding: 10px 12px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid var(--line, rgba(25, 50, 77, 0.08));
+  animation: ra-rise 0.45s ease both;
+}
+
+.ra-feature:hover {
+  transform: translateY(-2px);
+  border-color: rgba(42, 111, 190, 0.35);
+}
+
+.ra-feature-label {
+  display: block;
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted, #667b94);
+  margin-bottom: 3px;
+}
+
+.ra-feature-value {
+  font-size: 0.95rem;
+  color: var(--ink, #19324d);
+}
+
+@media (max-width: 760px) {
+  .ra-prob { grid-template-columns: 78px 1fr 46px; }
+  .ra-imp { grid-template-columns: 104px 1fr 42px; }
+  .ra-feature-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+}
