@@ -106,9 +106,26 @@ public class RouteHistoryService {
         return toHistoryDetailResponse(history, feedback);
     }
 
+    /**
+     * Deletes one saved analysis belonging to this user, together with any
+     * feedback left on it.
+     *
+     * <p>The feedback used to be left behind. {@code route_feedback} has a
+     * not-null foreign key to {@code route_analysis_history}, so deleting an
+     * analysis you had rated violated that constraint and the request failed.
+     * Before the exception handler was fixed the user saw a bare HTTP 500;
+     * afterwards they saw a tidier 409 — but either way the item would not
+     * delete, and the more useful the user had been the more stuck they were.</p>
+     *
+     * <p>Removing the feedback first is the right behaviour here rather than a
+     * database cascade: the feedback is about that one analysis and has no
+     * meaning without it, and doing it in code keeps the rule visible and
+     * portable across databases.</p>
+     */
     @Transactional
     public void deleteHistory(AppUser user, Long historyId) {
         RouteAnalysisHistory history = requireOwnedHistory(user, historyId);
+        feedbackRepository.deleteByHistoryId(history.getId());
         historyRepository.delete(history);
     }
 

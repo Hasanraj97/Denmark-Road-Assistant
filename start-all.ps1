@@ -159,7 +159,10 @@ try {
                          -FileName 'cmd.exe' `
                          -Args @('/c','npm','start') `
                          -LogName 'frontend' | Out-Null
-    Wait-ForHttp -Url "http://127.0.0.1:$FrontPort" -Name 'Frontend' -Seconds 180 -LogName 'frontend'
+    # NOTE: localhost, not 127.0.0.1. The Angular dev server binds to IPv6 only
+    # ([::1]:4200), so an IPv4 health check never succeeds even though the
+    # server is up. The other two bind IPv4 and keep 127.0.0.1.
+    Wait-ForHttp -Url "http://localhost:$FrontPort" -Name 'Frontend' -Seconds 180 -LogName 'frontend'
 
     Say ''
     Say 'All three services are running.'

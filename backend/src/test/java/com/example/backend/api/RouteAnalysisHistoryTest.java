@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -115,5 +116,34 @@ class RouteAnalysisHistoryTest extends AbstractApiTest {
         assertThat(saved.getVehicleLoadFactor()).isEqualTo(0.55);
         assertThat(saved.getRouteSummary())
                 .isEqualTo(TestFixtures.ORIGIN_LABEL + " to " + TestFixtures.DESTINATION_LABEL);
+    }
+
+    @Test
+    @DisplayName("an analysis you have left feedback on can still be deleted")
+    void deletingAnAnalysisAlsoRemovesItsFeedback() throws Exception {
+        AuthResponse user = signUp("deleter@example.dk");
+
+        String body = mockMvc.perform(jsonPost("/api/route-and-predict", TestFixtures.routeRequest())
+                        .header("Authorization", BEARER + user.token()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        long historyId = objectMapper.readTree(body).get("historyId").asLong();
+
+        mockMvc.perform(jsonPost("/api/history/" + historyId + "/feedback",
+                        java.util.Map.of("helpful", true, "comment", "Matched what I saw."))
+                        .header("Authorization", BEARER + user.token()))
+                .andExpect(status().isOk());
+
+        // route_feedback has a NOT NULL foreign key to route_analysis_history, so
+        // deleting a rated analysis used to violate that constraint: a bare 500
+        // before the exception handler was fixed, a 409 afterwards. Either way the
+        // item would not delete - the more useful the user had been, the more
+        // stuck they were.
+        mockMvc.perform(delete("/api/history/" + historyId)
+                        .header("Authorization", BEARER + user.token()))
+                .andExpect(status().isOk());
+
+        assertThat(historyRepository.count()).isZero();
+        assertThat(feedbackRepository.count()).isZero();
     }
 }

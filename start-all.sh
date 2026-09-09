@@ -143,7 +143,11 @@ wait_for_http "http://127.0.0.1:$BACKEND_PORT/api/health" "Backend" 180 "$LOG_DI
 say "3/3  Frontend (port $FRONTEND_PORT)"
 ( cd "$ROOT/frontend" && exec npm start ) > "$LOG_DIR/frontend.log" 2>&1 &
 PIDS+=($!)
-wait_for_http "http://127.0.0.1:$FRONTEND_PORT" "Frontend" 180 "$LOG_DIR/frontend.log"
+# NOTE: localhost, not 127.0.0.1. The Angular dev server binds to IPv6 only
+# ([::1]:4200), so an IPv4 health check never succeeds even though the server
+# is up and serving. The ML service and backend bind IPv4, so they keep
+# 127.0.0.1 and avoid a pointless IPv6 attempt first.
+wait_for_http "http://localhost:$FRONTEND_PORT" "Frontend" 180 "$LOG_DIR/frontend.log"
 
 say ""
 say "All three services are running."

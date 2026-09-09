@@ -1,10 +1,9 @@
 # LOOP_STATE.md — Denmark Road Assistant repair & hardening loop
 
-This file is the memory of the repair loop. If the session restarts, read this
-file first and resume from the phase named below. Do not restart from Phase 0.
+The memory of the repair loop. If the session restarts, read this file first and
+resume from the phase named below. Do not restart from Phase 0.
 
-**Project location:** `D:\denmark-road-assistant-main`
-**Loop started:** 2026-09-08
+**Project:** `D:\denmark-road-assistant-main` · **Loop run:** 2026-09-08 → 2026-09-09
 
 ---
 
@@ -12,209 +11,252 @@ file first and resume from the phase named below. Do not restart from Phase 0.
 
 | | |
 |---|---|
-| **Current phase** | Phase 4 — the machine-learning rebuild |
-| **Phases complete** | 0, 1, 2, 3 |
-| **Next up** | Phase 4, then 5 (tests), 6 (frontend), 7 (Android), 8 (docs), 9 (final sweep) |
-| **Commits so far** | `92ffb34` initial + hygiene · `58bc9e1` phase 2–3 · `f71efd8` phase 3 |
+| **Current phase** | Phase 9 — final sweep |
+| **Phases complete** | 0, 1, 2, 3, 4, 5, 6, 7, 8 |
+| **Tests** | **383 passing** — 76 backend (JUnit) + 307 ML (pytest) |
+| **Build** | frontend 556.48 kB, inside the 560 kB budget |
 
-**How to restart the services** (both were running and healthy at last check):
+### Commits
+
+| | |
+|---|---|
+| `92ffb34` | initial commit + repository hygiene |
+| `58bc9e1` | phase 2–3 — zero-setup H2, real error messages, id-based JWT |
+| `f71efd8` | phase 3 — API lockdown, profile session, HTTP timeouts |
+| `581e136` | phase 4 — ML rebuild: one feature path, real weather, 5 grades |
+| `09420db` | phase 7–8 — Android config, documents, one-command start |
+| `2a775b8` | phase 5–6 — test suites, frontend honesty/session, `mvnw.cmd` |
+
+### Restarting the system
 
 ```bash
-cd ml-service && ./.venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+./start-all.sh
 ```
-```bash
-cd backend && ./mvnw spring-boot:run
-```
+
+Or three terminals — see README §3.
 
 ---
 
-## PHASE 0 — ENVIRONMENT SURVEY ✅
+## PHASE 0 — ENVIRONMENT ✅
 
 | Tool | Version | Verdict |
 |---|---|---|
-| `java` / `javac` | OpenJDK 25.0.1 LTS (Temurin) | OK — **risk R1 resolved**, see below |
-| `JAVA_HOME` | unset | Fine, `java` is on PATH |
-| `mvn` | not installed | Not needed — `backend/mvnw` works (downloads Maven 3.9.14) |
-| `node` / `npm` | v20.19.0 / 10.8.2 | OK — exactly Angular 21's minimum |
-| `python` | 3.14.3 (default) **and** 3.12.10 | **3.12 used** — decision D1 |
-| `pip` | 25.3 | OK |
-| `git` | 2.55.0.windows.5 | OK |
+| java / javac | OpenJDK 25.0.1 Temurin | OK — **R1 resolved**, Spring Boot 3.5.13 + Hibernate 6.6.45 run fine on 25 |
+| mvn | not installed | Not needed — `mvnw` works (Maven 3.9.14) |
+| node / npm | 20.19.0 / 10.8.2 | OK — exactly Angular 21's floor. **R2 resolved**, `npm ci` and `npm run build` both succeed |
+| python | 3.14.3 **and** 3.12.10 | **3.12 used** — decision D1 |
+| git | 2.55.0 | OK |
 | Android SDK | **absent** | **Android = configuration-only** — decision D2 |
 
-**D1 — Python 3.12 for the ML service.** `requirements.txt` pins
-scikit-learn 1.7.1 / numpy 2.3.2 / pandas 2.3.2, which publish no `cp314`
-wheels, so a 3.14 venv would try to compile from source and fail. Created with
-`py -3.12 -m venv .venv`. Verified: all six packages install cleanly.
+**D1 — Python 3.12.** `requirements.txt` pins scikit-learn 1.7.1 / numpy 2.3.2 /
+pandas 2.3.2, which publish no `cp314` wheels; a 3.14 venv would compile from
+source and fail. Documented in the README.
 
-**D2 — Android configuration-only.** No SDK, so Phase 7 repairs configuration
-and writes instructions rather than building an APK.
-
-**R1 — RESOLVED.** Java 25 was a risk because the project targets Java 17. In
-practice Spring Boot 3.5.13 + Hibernate 6.6.45 start and run correctly on JDK 25.
-Observed, not assumed: the backend booted and served requests.
-
-**R2 — Node 20.19.0 is Angular 21's floor.** `npm ci` succeeded. Full build not
-yet re-run after the frontend changes; that is a Phase 6 exit check.
+**D2 — Android configuration-only.** No SDK, so Phase 7 repaired configuration
+and wrote instructions. No APK was built. The one Android command that *could*
+run here without an SDK (`npx cap sync`) was not run either, because it rewrites
+generated files; the README documents it as the required first step.
 
 ---
 
 ## PHASE 1 — REPOSITORY HYGIENE ✅
 
-The project was **not a Git repository at all** — no `.git` directory existed.
+The project **was not a Git repository at all**. `git init` on `main`.
 
-- `git init` on branch `main`; local `user.name=hasan`,
-  `user.email=hasanraz97@gmail.com` (change these if you prefer).
-- `.gitignore.txt` → `.gitignore`. **This was the root cause of S4**: Git never
-  reads a file called `.gitignore.txt`, so every ignore rule in it was inert.
-- Extended it to cover `node_modules/`, `dist/`, `target/`, `__pycache__/`,
-  `.venv/`, `.env`, `*.joblib`, `*.zip`, H2 database files, and the generated
-  `frontend/android/capacitor-cordova-android-plugins/`.
-- Deleted the committed `__pycache__` directories including the stray
-  `main.cpython-313.pyc.2444357645200`.
-- Added `.gitattributes` so line endings are stable across platforms.
-- `backend.zip` (16 KB) left on disk but untracked. The audit confirmed it is a
-  **stale Spring Initializr skeleton**, not a backup — its only unique file is
-  boilerplate `HELP.md`. Safe to delete; deletion deferred to Phase 8.
+Root cause of S4: the ignore file was named `.gitignore.txt`, which Git never
+reads, so every rule in it was inert. Renamed and extended. Deleted the committed
+`__pycache__` and the stray `main.cpython-313.pyc.2444357645200`. Removed
+`backend.zip` after confirming it was a Spring Initializr skeleton whose only
+unique file was a boilerplate `HELP.md`. Added `.gitattributes`.
 
-**Exit checks:** `git status` clean · `.gitignore.txt` gone · `git ls-files`
-shows **185 files, zero** `.pyc`, `.zip`, `.joblib` or `node_modules`. ✅
+**V19 ✅** — `git ls-files` has no `.pyc`, `.zip`, `.joblib` or `node_modules`.
 
 ---
 
 ## PHASE 2 — GET IT RUNNING ✅
 
-**B3 fixed.** `application.properties` defaulted to
-`jdbc:mysql://localhost:3306/road_assistant` with `root`/`root`, so with no MySQL
-the backend died at startup. Now:
+**B3.** Default was `jdbc:mysql://localhost:3306` with `root`/`root`, so with no
+MySQL the backend died. Now file-based H2 by default; MySQL in
+`application-mysql.properties`; H2 console in `application-dev.properties`.
+`driver-class-name` removed — it was pinned to MySQL *independently of the URL*,
+so pointing the URL at H2 still failed.
 
-- default = **file-based H2** at `backend/data/road-assistant`, created
-  automatically, zero setup;
-- `application-mysql.properties` holds MySQL, activated with
-  `-Dspring-boot.run.profiles=mysql`;
-- `application-dev.properties` adds the H2 console and SQL logging;
-- `driver-class-name` is **no longer pinned separately from the URL** — that was
-  its own bug: setting only `SPRING_DATASOURCE_URL` to H2 still loaded the MySQL
-  driver and failed.
+**Correction to the brief.** `columnDefinition = "LONGTEXT"` was **not** the
+blocker it was reported to be — H2 accepts LONGTEXT as an alias for
+`VARCHAR(1000000000)`, proven by running H2 2.3.232 directly. It was still a real
+defect (bypasses the dialect, breaks PostgreSQL, neutralises `@Lob`) and is fixed.
 
-`RouteAnalysisHistory` no longer hard-codes `columnDefinition = "LONGTEXT"`.
-**Correction to the brief:** the audit proved by running H2 2.3.232 directly that
-H2 *accepts* `LONGTEXT` as an alias for `VARCHAR(1000000000)`, so this was **not**
-the startup blocker it was reported to be. It is still a real defect — it bypasses
-the dialect, gives H2 and MySQL structurally different columns, neutralises
-`@Lob`, and would fail outright on PostgreSQL. Now `@Column(length = 4000)`.
-
-### Evidence — services actually running
-
-```
-$ curl http://127.0.0.1:8080/api/health
-{"service":"backend","status":"ok"}
-```
-
-```
-$ curl -X POST .../api/route-and-predict -d '{"origin":"Copenhagen","destination":"Roskilde","selectedDepartureTime":"08:00"}'
-  origin/dest     : København, Københavns Kommune, ... -> Roskilde, Roskilde Kommune, ...
-  distanceKm      : 35.6043      durationMinutes : 37.25
-  geometry points : 798          historyId       : 2
-  label           : Moderate     confidence      : 0.4377
-  classProbs      : {'Excellent': 0.0116, 'Good': 0.0942, 'Moderate': 0.4377, 'Poor': 0.4276, 'Very Poor': 0.0289}
-```
-
-Signup → login → analyse → history → duplicate-email (409) → wrong-password (401)
-all behave correctly. Real Nominatim names, real OSRM geometry.
+**V5 ✅ V6 ✅ V9 ✅** — backend starts with no MySQL; health returns ok; the full
+journey signup → login → analyse → history works with real OSRM geometry (798
+points, 35.6 km Copenhagen→Roskilde) and real Nominatim names.
 
 ---
 
 ## PHASE 3 — BACKEND CORRECTNESS AND SECURITY ✅
 
-| Defect | Fix | Evidence |
+| Defect | Status | Evidence |
 |---|---|---|
-| **F1** helpful errors replaced by generic 500 | `ResponseStatusException` gets its own handler ahead of the catch-all; every 5xx now logged with a stack trace and a reference id | unknown place → `404 "Could not match \"Zzzqqxwv Nowhereville\" to a place in Denmark…"` |
-| **F1b** *(new)* handler logged **nothing** | first failing signup produced a silent server log — now impossible | verified by log inspection |
-| **F2** email change broke your session | JWT subject is the **user id**, not the email; `loadUserById`; filter never throws; `PUT /api/users/me` returns a fresh token | change email → protected call with the **old** token = **200** (was 500) |
-| **S1** committed JWT secret | `JwtKeyConfig`: reads `APP_JWT_SECRET`, fails fast in prod profiles, rejects the leaked value and secrets < 32 chars, random dev key with a loud warning | app boots with a generated key + warning |
-| **S2** public retrain | now `authenticated()` | anonymous POST → **401** |
-| **S3** leaked `E:\sw8-maps\…` paths | removed from `ModelInfoDto` | response contains no paths |
-| **S7** dead `/h2-console` rule | moved into `DevH2ConsoleConfig`, `@Profile("dev")` + `@ConditionalOnProperty` | — |
-| default-open chain *(new)* | `anyRequest().permitAll()` → `authenticated()` | — |
-| no HTTP timeouts *(new)* | `HttpClientConfig`: 5s connect / 15s read on Nominatim + OSRM | — |
-| `MlServiceClient` swallowed its own detail *(new)* | rethrows its own `ResponseStatusException` | — |
-| deprecated `DaoAuthenticationProvider` | bean removed entirely — it was never called | build has **no deprecation warnings** |
-| Lombok `@Data` on `AppUser` *(new)* | removed; it put the BCrypt hash in `toString()`. Lombok dropped from the build | — |
+| F1 errors swallowed | fixed | unknown place → 404 with the real message |
+| F1b **nothing was logged** *(new)* | fixed | first failing signup left a totally silent log |
+| F2 email change killed the session | fixed | old token → **200** (was 500) |
+| S1 committed JWT secret | fixed | `JwtKeyConfig`, fails fast in prod |
+| S2 public retrain | fixed | anonymous → **401** |
+| S3 leaked `E:\sw8-maps` paths | fixed | no paths in response |
+| S7 dead h2-console rule | fixed | moved to `DevH2ConsoleConfig` |
+| default-open chain *(new)* | fixed | `anyRequest().authenticated()` |
+| no HTTP timeouts *(new)* | fixed | 5s connect / 15s read |
+| ML client discarded its own detail *(new)* | fixed | rethrows |
+| deprecated `DaoAuthenticationProvider` | removed | build has no deprecation warnings |
+| Lombok leaked the BCrypt hash *(new)* | removed | Lombok dropped from the build |
 
-**F3 is deliberately deferred into Phase 4**, because Phase 4 removes the Java
-feature-derivation code that contains it.
-
-```
-$ curl -X POST /api/retrain-model            → 401 "You need to be logged in to do that."
-$ curl /api/model-info                       → no filesystem paths
-$ (ML service stopped) POST /api/route-and-predict
-  502 "The synthetic ML service is unavailable. Start the Python ml-service on port 8000."
-```
+**V11 ✅ V12 ✅ V16 ✅ V17 ✅ V10 ✅**
 
 ---
 
-## THE AUDIT (8 parallel reviewers + critic)
+## PHASE 4 — THE ML REBUILD ✅
 
-7 of 9 agents completed; the ML-service reviewer and the completeness critic hit
-a session limit and their work was done by hand instead. Full output:
-`.audit/findings.md` (untracked). **79 new defects** beyond the brief's 20:
-9 blocker, 34 major, 36 minor.
+**The structural change.** Features were derived twice, in two languages, and had
+drifted; live vectors covered ~8% of the training distribution. There is now
+**one** derivation (`ml-service/app/features.py`) used by both the dataset
+generator and the prediction endpoint. `FeatureEngineeringService.java` deleted.
 
-### Corrections the audit made to the brief — important, do not repeat the errors
+| | Before | After |
+|---|---:|---:|
+| Accuracy | 0.7788 | **0.8546** |
+| Very Poor F1 | **0.00** | **0.880** |
+| Very Poor share of training set | 1.02 % | 8.03 % |
+| Model artefact | 82 MB | **8.9 MB** |
+| Train time from nothing | — | ~5 s |
 
-- **B4 REFUTED.** `LONGTEXT` does **not** break H2 (see Phase 2 above).
-- **M2 partly REFUTED.** `weather_risk` is **character-for-character identical**
-  between Java and Python. Three of the four named features do differ
-  (construction, accident, vehicle load). The dominant divergence is something
-  the brief missed entirely: the Java `lowTrafficTime` branch and its `0.05`
-  night `timeScore`, which have **no counterpart in training at all**.
-- **M3 partly REFUTED.** "Byte-identical forever" is false — day, season and
-  live OSRM distance still vary. But it is *worse* than described in two ways:
-  the same multiplier is applied to all 11 noised features (perfectly correlated,
-  where training draws independently), and it **compounds** through
-  `urbanScore → trafficLevel → accidentRisk`, reaching ~9%, not 3%.
-- **B1 partly REFUTED.** Gradle only *warns* about the missing
+**V13 ✅** — 1 536-combination sweep produces all five grades. Weather gradient is
+monotonic: calm → Excellent 183 / Good 182 / Moderate 19, never Poor; storm →
+Poor 251 / Very Poor 55, never Excellent.
+
+**V14 ✅** — every feature's live range sits inside the training range at
+**≥ 99 %** coverage (lowest 99.3 %).
+
+**V15 ✅** — a live analysis used 14.6 °C, 0.0 mm, 0.79 humidity, 27.7 km/h —
+**identical** to Open-Meteo queried directly for that midpoint and hour.
+
+**V2 ✅** — deleting the model, metadata and dataset and restarting regenerates
+all three.
+
+### Corrections to the brief (verified, do not repeat the errors)
+
+- **M2 partly refuted.** `weather_risk` was *character-for-character identical*
+  in Java and Python. The dominant divergence was the Java `lowTrafficTime`
+  branch and its `0.05` night `timeScore`, which had **no counterpart in
+  training at all** — missed by the original audit.
+- **M3 partly refuted.** "Byte-identical forever" is false (day, season and OSRM
+  distance vary). But it was *worse* than described: one multiplier applied to
+  all 11 features (perfectly correlated), compounding to ~9 %, and silently
+  keyed on OpenStreetMap label text.
+- **New, verified by hand:** the shipped CSV **could not have been produced by
+  the committed generator** — 5 837 of 12 000 rows had a `weather_risk` the code
+  cannot emit, plus 2 112 impossible speeds, 1 451 impossible rainfalls and 149
+  impossible wind values. The model in use was trained by uncommitted code, so
+  0.7788 was never reproducible. Now deterministic from seed 42.
+
+---
+
+## PHASE 5 — TESTS ✅  ·  383 passing, none touching the network
+
+**Backend — 76 tests, 9 classes, ~17 s.** Written to catch *these* defects:
+F2 (old token still works after an email change; subject asserted numeric),
+F1 (mocked ML failure surfaces as 502 with its own text, explicitly not
+"Something went wrong"), expired/garbage/wrong-signature tokens → 401 never 500,
+`RouteObservationService` departure resolution and mean urban signal, the
+`WeatherService` seasonal fallback, history saved only when signed in, retrain
+401 for anonymous, and `model-info` carrying no filesystem path at any depth.
+
+`BackendApplicationTests` was rewritten, not deleted: its bare `contextLoads` ran
+under the **default** profile, so the suite was reaching into the developer's real
+file-based H2. It now asserts `jdbc:h2:mem:`.
+
+**ML service — 307 tests, ~68 s.** All five labels reachable; camelCase and
+snake_case payloads; malformed → 422 not 500; live features inside training
+ranges; weather formula behaviour at the extremes; and `generate_dataset`
+determinism — the property the original dataset did **not** have.
+
+**V3 ✅ V4 ✅**
+
+---
+
+## PHASE 6 — FRONTEND ✅
+
+- **Token leaked to third parties** — the interceptor attached `Authorization` to
+  *every* request including Open-Meteo and Nominatim. Now backend-origin only.
+- **No 401 handling anywhere** — a dead session still looked logged in. Now
+  cleared and redirected, except on `/api/auth/login` where 401 means wrong
+  password.
+- **The one honesty label pointed at the wrong thing** — it called the *weather*
+  synthetic. Now consistent across all three services: real weather, modelled
+  road grade, with an explicit on-screen note when the seasonal fallback was used.
+- Profile update stores the fresh token; `datasetPath`/`modelPath` removed;
+  one shared error helper; distinguishable loading/failure states; `ngOnDestroy`
+  added across the app; feedback success message no longer self-wiped.
+- **"What Shaped This Advisory" was `display:none` below 760 px** — the
+  explainability story was invisible on every phone, and therefore *always*
+  invisible in the Android app. Fixed.
+
+**V7 ✅** — 556.48 kB, inside budget.
+
+---
+
+## PHASE 7 — ANDROID (configuration only) ✅
+
+- **B2** — `network_security_config.xml` had no `<base-config>` and permitted one
+  LAN IP, so `10.0.2.2` (which the app tries *first*) was blocked and the
+  emulator could never reach the backend. Now explicit deny-by-default plus
+  `10.0.2.2`, `localhost`, `127.0.0.1` and the LAN address, with instructions.
+- **S5** — `appId` now matches `applicationId`/`namespace`.
+- `androidScheme` `http` → `https` (Capacitor's default, a real secure context).
+- `allowBackup` off — the login token lives in WebView local storage.
+- `usesCleartextTraffic` removed from the manifest: it is **ignored** whenever a
+  network-security-config is present, and it made the config look permissive.
+- **B1** — documented. *Correction:* Gradle only **warns** about the missing
   `capacitor-cordova-android-plugins` directory; the first hard failure is
-  `capacitor.build.gradle:10` failing to read `cordova.variables.gradle`.
-- **B2 detail.** The environment file says `http://10.0.2.2:8080` (correct
-  emulator alias). The real problem is that `network_security_config.xml` has
-  **no `<base-config>`**, so every host except `192.168.1.103` is blocked.
+  `capacitor.build.gradle` failing to read `cordova.variables.gradle`.
 
-### Biggest new discovery — verified by hand
+**Not runnable here** (no SDK): `npx cap sync android`, `./gradlew :app:tasks`,
+and any APK build. README §8 gives the exact commands.
 
-**The shipped dataset and model were NOT produced by the current
-`_generate_dataset`.** Measured directly on `synthetic_denmark_routes.csv`:
+---
 
-| Impossible under current code | Rows |
-|---|---|
-| `wind_speed_kmh < 5.0` (generator forces `max(5.0, …)`) | 149 |
-| `avg_speed_kmh < 24.0` (lowest sampled band starts at 24) | 2 112 |
-| `weather_risk` outside `[0.339, 0.670]` (a 3-valued season map ±3%) | **5 837** |
-| `rainfall_mm > 6.18` (arithmetic max of `weather_risk × 8`) | 1 451 |
+## PHASE 8 — DOCUMENTS AND ONE-COMMAND START ✅
 
-`weather_risk` has **89 distinct values spanning 0.00–0.90** in the CSV, but the
-current generator can only emit three values ±3%. So the model answering requests
-today was trained by **different, uncommitted code**, and the reported accuracy of
-0.7788 belongs to that vanished dataset. This makes the honesty problem worse
-than M5 states: the headline number is not merely circular, it is
-**unreproducible**. Phase 4 fixes this by making the dataset and model
-regenerate deterministically from committed code.
+`README.md` rewritten from nothing. `MODEL_EVALUATION.md` written with every
+number traced to a command. `FIX_LOG.md` written with one entry per defect
+including the corrections where the audit's diagnosis was wrong.
+`start-all.sh` / `start-all.ps1` start all three services in order, wait for
+health, name the offending port on a clash, and shut down on Ctrl+C.
+`.env.example` completed (it listed 4 of 9 variables, omitting all 5 database
+ones).
 
-Confirmed class balance of the shipped CSV: Excellent 1584 (13.2%), Good 3936
-(32.8%), Moderate 4629 (38.6%), Poor 1729 (14.4%), **Very Poor 122 (1.02%)**.
+**`backend/mvnw.cmd` rewritten** — it was a 288-byte stub requiring a
+`maven-wrapper.jar` that does not exist, so every Windows user running it from
+cmd.exe or PowerShell got "Maven wrapper jar not found". Verified twice:
+against the existing Maven home, and from nothing with a throwaway
+`MAVEN_USER_HOME` to exercise the download path.
 
-### Blocker-level new defects still outstanding
+---
 
-| # | Defect | Phase |
-|---|---|---|
-| 1 | Auth interceptor attaches the JWT to **third-party URLs** (Open-Meteo, Nominatim) — token leak | 6 |
-| 2 | No 401 handling anywhere in the frontend — a dead session still looks logged in | 6 |
-| 3 | The only synthetic disclosure in the UI **labels the real weather as synthetic** | 6 |
-| 4 | Deleting a history item that has feedback → referential-integrity 500 | 5/6 |
-| 5 | Live feature vectors occupy ~8% of the training distribution | 4 |
-| 6 | `lowTrafficTime` branch has no counterpart in training | 4 |
-| 7 | Shipped CSV/model not reproducible from code | 4 |
-| 8 | `mvnw.cmd` reported broken — **partly refuted**, `./mvnw` works from Git Bash and downloaded Maven 3.9.14. `mvnw.cmd` still to be tested from cmd.exe | 8 |
+## THE AUDIT
+
+8 parallel reviewers + a critic. 7 completed; the ML reviewer and the critic hit
+a session limit and their work was done by hand. **79 new defects** beyond the
+brief's 20 — 9 blocker, 34 major, 36 minor. Full output in `.audit/findings.md`
+(untracked).
+
+### Regression caught during the loop
+
+A subagent silently reverted two verified fixes in `backend/src/main` despite
+being told not to modify it: `JwtService` back to `.subject(user.getEmail())`
+and `ApiExceptionHandler` losing its `@ExceptionHandler(ResponseStatusException)`
+annotation. The first was worse than a revert — `extractUserId` still parses the
+subject as a number, so an email subject would have failed **every**
+authenticated request. Both were restored from the verified commit and the
+backend suite now guards them.
 
 ---
 
@@ -222,23 +264,23 @@ Confirmed class balance of the shipped CSV: Excellent 1584 (13.2%), Good 3936
 
 | ID | Check | Result |
 |---|---|---|
-| V1 | ml-service venv installs from requirements.txt | ✅ PASS |
-| V2 | ml-service regenerates dataset + model when both deleted | ⏳ Phase 4 |
-| V3 | pytest green | ⏳ Phase 5 |
-| V4 | `mvnw clean verify` green | ⏳ Phase 5 |
-| V5 | backend starts with no MySQL | ✅ PASS |
-| V6 | `GET /api/health` returns ok | ✅ PASS |
-| V7 | `npm ci` + `npm run build` inside budget | ⏳ Phase 6 |
-| V8 | `npm start` serves, map renders | ⏳ Phase 6 |
-| V9 | signup→login→analyse→history | ✅ PASS (feedback not yet exercised) |
-| V10 | change email, protected endpoint still works | ✅ PASS |
-| V11 | ML service down → real error on screen | ✅ PASS (API level) |
-| V12 | unknown place → real message | ✅ PASS (404) |
-| V13 | 1000+ input sweep shows all 5 labels | ⏳ Phase 4 |
-| V14 | live feature ranges match training ranges | ⏳ Phase 4 |
-| V15 | prediction weather = real Open-Meteo values | ⏳ Phase 4 |
-| V16 | retrain rejects anonymous | ✅ PASS (401) |
-| V17 | model-info exposes no filesystem paths | ✅ PASS |
-| V18 | prod profile refuses the default secret | ⏳ needs an explicit test |
-| V19 | `git ls-files` has no junk | ✅ PASS |
-| V20 | README / MODEL_EVALUATION / FIX_LOG current | ⏳ Phase 8 |
+| V1 | venv installs from requirements.txt | ✅ |
+| V2 | regenerates dataset + model when both deleted | ✅ |
+| V3 | pytest green | ✅ 307 passed |
+| V4 | `mvnw test` green | ✅ 76 passed |
+| V5 | backend starts with no MySQL | ✅ |
+| V6 | `GET /api/health` ok | ✅ |
+| V7 | `npm ci` + `npm run build` inside budget | ✅ 556.48 kB / 560 kB |
+| V8 | `npm start` serves, map renders | ⏳ final sweep |
+| V9 | signup → login → analyse → history | ✅ |
+| V10 | change email, protected endpoint still works | ✅ |
+| V11 | ML down → real error | ✅ |
+| V12 | unknown place → real message | ✅ 404 |
+| V13 | 1 000+ sweep shows all 5 labels | ✅ 1 536 |
+| V14 | live ranges match training ranges | ✅ ≥99 % |
+| V15 | prediction weather = real Open-Meteo | ✅ exact |
+| V16 | retrain rejects anonymous | ✅ 401 |
+| V17 | model-info exposes no paths | ✅ |
+| V18 | prod profile refuses default secret | ⏳ final sweep |
+| V19 | no junk in `git ls-files` | ✅ |
+| V20 | all four documents current | ✅ |

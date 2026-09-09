@@ -8,4 +8,11 @@ import java.util.Optional;
 public interface RouteFeedbackRepository extends JpaRepository<RouteFeedback, Long> {
 
     Optional<RouteFeedback> findByHistoryIdAndUserId(Long historyId, Long userId);
+
+    /**
+     * Removes the feedback attached to one analysis, so the analysis itself can
+     * be deleted without violating the not-null foreign key from
+     * {@code route_feedback}.
+     */
+    void deleteByHistoryId(Long historyId);
 }
