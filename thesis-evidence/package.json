@@ -1,0 +1,9 @@
+{
+  "name": "dra-thesis-evidence",
+  "private": true,
+  "description": "Screenshots, system tests and accessibility checks for the Denmark Road Assistant thesis",
+  "dependencies": {
+    "axe-core": "4.10.3",
+    "playwright-core": "1.63.0"
+  }
+}

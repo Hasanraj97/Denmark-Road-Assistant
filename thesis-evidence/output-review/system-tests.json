@@ -1,0 +1,170 @@
+[
+  {
+    "id": "ST01",
+    "name": "App opens on the Route Analysis page and shows the model details",
+    "status": "pass",
+    "detail": "URL /analysis; model strip: MODEL RandomForestClassifier TRAINING ROWS 12000 ACCURACY 85.5%",
+    "ms": 3418
+  },
+  {
+    "id": "ST02",
+    "name": "An example trip fills in the form with one click",
+    "status": "pass",
+    "detail": "Origin \"Copenhagen\", destination \"Roskilde\"",
+    "ms": 105
+  },
+  {
+    "id": "ST03",
+    "name": "The swap button swaps the start point and destination",
+    "status": "pass",
+    "detail": "After swap: \"Roskilde\" to \"Copenhagen\"",
+    "ms": 183
+  },
+  {
+    "id": "ST04",
+    "name": "The date picker only offers today and the next six days",
+    "status": "pass",
+    "detail": "min 2026-11-11, max 2026-11-17",
+    "ms": 8
+  },
+  {
+    "id": "ST05",
+    "name": "A visitor who is not logged in can analyse a route (Copenhagen to Roskilde)",
+    "status": "pass",
+    "detail": "35.6043 km, grade Moderate, not saved, \"Save this result\" prompt shown",
+    "ms": 3458
+  },
+  {
+    "id": "ST06",
+    "name": "A departure date in the past is refused with a clear message",
+    "status": "pass",
+    "detail": "HTTP 400: \"That date has already passed. Pick a day between 2026-11-11 and 2026-11-17.\"",
+    "ms": 131
+  },
+  {
+    "id": "ST07",
+    "name": "A date beyond the forecast window is refused with a clear message",
+    "status": "pass",
+    "detail": "HTTP 400: \"The weather forecast only reaches 2026-11-17, and this app will not grade a route without a real forecast behind it. Pick a day between 2026-11-11 and 2026-11-17.\"",
+    "ms": 67
+  },
+  {
+    "id": "ST08",
+    "name": "An unknown place name gives a readable error message",
+    "status": "pass",
+    "detail": "HTTP 404, message shown: \"Route not found. Could not match \"Qwxyzborg Nowhere\" to a place in Denmark. Try a more specific Denmark town, address or postcode. Check the spelling of both places.\"",
+    "ms": 2995
+  },
+  {
+    "id": "ST09",
+    "name": "Use My Location fills the start point from the device position",
+    "status": "pass",
+    "detail": "Position set to Copenhagen City Hall Square; origin became \"Vestervold, Meatpacking District, Copenhagen, Copenhagen Municipality, Capital Region of Denmark, 1550, Denmark\"",
+    "ms": 209
+  },
+  {
+    "id": "ST10",
+    "name": "A new user can sign up and is logged in straight away",
+    "status": "pass",
+    "detail": "Redirected to /profile; top bar shows \"Test Driver\"",
+    "ms": 2807
+  },
+  {
+    "id": "ST11",
+    "name": "Signing up again with the same email is refused with a clear message",
+    "status": "pass",
+    "detail": "Message: \"An account with that email already exists.\"",
+    "ms": 1479
+  },
+  {
+    "id": "ST12",
+    "name": "A wrong password gives a general message that does not reveal whether the email exists",
+    "status": "pass",
+    "detail": "Both a wrong password and an unknown email show \"Invalid email or password.\"",
+    "ms": 5924
+  },
+  {
+    "id": "ST13",
+    "name": "A registered user can log in and is sent to the Route Analysis page",
+    "status": "pass",
+    "detail": "Redirected to /analysis; top bar shows \"Test Driver\"",
+    "ms": 737
+  },
+  {
+    "id": "ST14",
+    "name": "A logged-in user analyses Copenhagen to Aarhus for tomorrow at 08:00 and gets the full result",
+    "status": "pass",
+    "detail": "303.3325 km, 205.01000000000002 min, grade Good (50%), leave 15 min early; 19 features, 34 directions, 9 factor rows, probabilities add to 100.10000000000001%; saved as history item 1",
+    "ms": 5120
+  },
+  {
+    "id": "ST15",
+    "name": "Feedback can be given on a fresh advisory",
+    "status": "pass",
+    "detail": "Feedback saved successfully.",
+    "ms": 253
+  },
+  {
+    "id": "ST16",
+    "name": "Six more routes of different lengths and times are analysed without errors",
+    "status": "pass",
+    "detail": "Odense-Aarhus 144.90189999999998 km Good, 4 events; Aalborg-Aarhus 121.2196 km Moderate, 0 events; Copenhagen Airport-Odense 170.9596 km Good, 8 events; Esbjerg-Kolding 75.5562 km Moderate, 2 events; Roskilde-Køge 25.3383 km Moderate, 1 events; Helsingør-Copenhagen 45.544599999999996 km Moderate, 1 events",
+    "ms": 16964
+  },
+  {
+    "id": "ST17",
+    "name": "The History page lists saved analyses newest first, and feedback can be saved there",
+    "status": "pass",
+    "detail": "7 saved analyses, newest first (\"Helsingør → København\" at the top); 2 marked \"Review saved\"",
+    "ms": 6584
+  },
+  {
+    "id": "ST18",
+    "name": "The profile can be edited and the change is kept after a reload",
+    "status": "pass",
+    "detail": "Message \"Profile updated successfully.\"; phone still 20304060 after reload",
+    "ms": 3439
+  },
+  {
+    "id": "ST19",
+    "name": "Logged-out visitors are sent to the login page when they open History",
+    "status": "pass",
+    "detail": "Redirected to /login?returnUrl=%2Fhistory",
+    "ms": 1052
+  },
+  {
+    "id": "ST20",
+    "name": "The history API refuses a request without a login token",
+    "status": "pass",
+    "detail": "HTTP 401",
+    "ms": 33
+  },
+  {
+    "id": "ST21",
+    "name": "The ML service answers a prediction quickly (20 timed requests)",
+    "status": "pass",
+    "detail": "median 40 ms, slowest 49 ms",
+    "ms": 829
+  },
+  {
+    "id": "ST22",
+    "name": "The app works on a phone-sized screen (Pixel 7 size)",
+    "status": "pass",
+    "detail": "Result shown; no sideways scrolling (overflow 0px)",
+    "ms": 5198
+  },
+  {
+    "id": "ST23",
+    "name": "Turn-by-turn guidance shows the next instruction and distance and spots leaving the route",
+    "status": "pass",
+    "detail": "Next instruction \"Continue on Vester Farimagsgade\" in 560 m; after moving away: \"You have left the route. You are 260 m from it — rejoin it when it is safe.\"",
+    "ms": 5510
+  },
+  {
+    "id": "ST24",
+    "name": "With the ML service stopped, the app explains that grading failed instead of crashing",
+    "status": "pass",
+    "detail": "HTTP 502; advisory card says: \"Road-condition grading failed. The road-condition model service is unavailable. Start the Python ml-service on port 8000.\"",
+    "ms": 6516
+  }
+]

@@ -1,0 +1,28 @@
+{
+  "exportedAt": "2026-11-11T08:59:53.691979400Z",
+  "profile": {
+    "id": 2,
+    "fullName": "Review Tester",
+    "email": "review.mwbw1c15@example.com",
+    "phone": null,
+    "address": null,
+    "createdAt": "2026-11-11T08:59:44.533483Z",
+    "updatedAt": "2026-11-11T08:59:44.533483Z"
+  },
+  "savedAnalyses": [
+    {
+      "id": 8,
+      "originLabel": "København, Københavns Kommune, Region Hovedstaden, 1357, Danmark",
+      "destinationLabel": "Aarhus, Aarhus Kommune, Region Midtjylland, 8000, Danmark",
+      "distanceKm": 303.3325,
+      "durationMinutes": 205.01000000000002,
+      "selectedDepartureTime": "2026-11-12 08:00",
+      "predictedCondition": "Good",
+      "confidence": 0.4996,
+      "leaveEarlyMinutes": 15,
+      "advisoryText": "Conditions look mostly good on this route, with only light disruption likely. As a rough rule of thumb, not a measured delay, leaving about 15 minutes early gives you a buffer. The strongest single factor was road grade. The weather used here is a live Open-Meteo forecast for the halfway point of your route. The model is split between neighbouring grades, so treat this as a rough guide.",
+      "createdAt": "2026-11-11T09:59:45.945897",
+      "feedback": null
+    }
+  ]
+}

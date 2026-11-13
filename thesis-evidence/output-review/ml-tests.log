@@ -1,0 +1,19 @@
+........................................................................ [ 22%]
+........................................................................ [ 45%]
+........................................................................ [ 68%]
+........................................................................ [ 91%]
+............................                                             [100%]
+============================== warnings summary ===============================
+tests/test_label_coverage.py::test_every_one_of_the_five_labels_is_reachable
+  D:\denmark-road-assistant-main\ml-service\.venv\Lib\site-packages\starlette\testclient.py:51: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+tests/test_label_coverage.py::test_every_one_of_the_five_labels_is_reachable
+tests/test_label_coverage.py::test_every_one_of_the_five_labels_is_reachable
+tests/test_label_coverage.py::test_every_one_of_the_five_labels_is_reachable
+tests/test_label_coverage.py::test_every_one_of_the_five_labels_is_reachable
+  D:\denmark-road-assistant-main\ml-service\.venv\Lib\site-packages\fastapi\routing.py:234: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    is_coroutine = asyncio.iscoroutinefunction(dependant.call)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+316 passed, 5 warnings in 4.75s

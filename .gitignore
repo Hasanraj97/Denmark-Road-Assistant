@@ -80,3 +80,14 @@ desktop.ini
 
 # --- Runtime logs from start-all.sh / start-all.ps1 ------------------------
 logs/
+
+# --- Local-only files from the thesis review update ------------------------
+# Backups made when the review fixes were applied, the update package itself,
+# and older or repeat evidence runs. Only output-review (run 4, the evidence
+# the thesis quotes) is committed.
+*.before-review
+*.before-fix
+thesis-evidence/review-update/
+thesis-evidence/output/
+thesis-evidence/output-final-check/
+Claude outputs/

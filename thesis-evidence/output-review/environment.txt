@@ -1,0 +1,11 @@
+﻿Run started: 2026-11-11 09:57:00 +01:00
+OS: Microsoft Windows 11 Pro 10.0.26300
+CPU: AMD Ryzen 5 5600U with Radeon Graphics         
+RAM: 7.3 GB
+openjdk version "25.0.4.1" 2026-08-18 LTS
+OpenJDK Runtime Environment Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS)
+OpenJDK 64-Bit Server VM Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS, mixed mode, sharing)
+Node:  
+v24.21.0
+Python:  
+Python 3.14.7

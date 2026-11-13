@@ -1,0 +1,91 @@
+ M FIX_LOG.md
+ M LOOP_STATE.md
+ M README.md
+ M backend/src/main/java/com/example/backend/controller/RouteAnalysisController.java
+ M backend/src/main/java/com/example/backend/controller/UserController.java
+ M backend/src/main/java/com/example/backend/dto/PredictionResponseDto.java
+ M backend/src/main/java/com/example/backend/dto/SignupRequest.java
+ M backend/src/main/java/com/example/backend/dto/UpdateProfileRequest.java
+ M backend/src/main/java/com/example/backend/entity/RouteAnalysisHistory.java
+ M backend/src/main/java/com/example/backend/routing/GeocodingService.java
+ M backend/src/main/java/com/example/backend/routing/OsrmRoutingService.java
+ M backend/src/main/java/com/example/backend/routing/RouteObservationService.java
+ M backend/src/main/java/com/example/backend/service/AuthService.java
+ M backend/src/main/java/com/example/backend/service/RouteHistoryService.java
+ M backend/src/main/java/com/example/backend/service/UserService.java
+ M backend/src/main/resources/application.properties
+ M backend/src/test/java/com/example/backend/api/SecurityRulesTest.java
+ M backend/src/test/java/com/example/backend/routing/RouteObservationServiceTest.java
+ M backend/src/test/java/com/example/backend/support/TestFixtures.java
+ M backend/src/test/resources/application-test.properties
+M  frontend/android/gradle/wrapper/gradle-wrapper.properties
+ M frontend/src/app/auth.service.ts
+ M frontend/src/app/feedback-card.component.css
+ M frontend/src/app/history.page.css
+ M frontend/src/app/history.page.html
+ M frontend/src/app/history.page.ts
+ M frontend/src/app/history.service.ts
+ M frontend/src/app/login.page.css
+ M frontend/src/app/profile.page.css
+ M frontend/src/app/profile.page.html
+ M frontend/src/app/profile.page.ts
+ M frontend/src/app/route-analysis.page.css
+ M frontend/src/app/route-analysis.page.html
+ M frontend/src/app/route-analysis.page.ts
+ M frontend/src/app/signup.page.html
+ M frontend/src/app/signup.page.ts
+ M frontend/src/app/weather-widget.component.css
+ M frontend/src/app/weather-widget.component.html
+ M ml-service/app/main.py
+ M ml-service/models/road_condition_model_metadata.json
+ M ml-service/requirements.txt
+ M start-all.ps1
+ M start-all.sh
+?? "Claude outputs/"
+?? README.md.before-review
+?? backend/src/main/java/com/example/backend/controller/RouteAnalysisController.java.before-review
+?? backend/src/main/java/com/example/backend/controller/UserController.java.before-review
+?? backend/src/main/java/com/example/backend/dto/PredictionResponseDto.java.before-review
+?? backend/src/main/java/com/example/backend/dto/SignupRequest.java.before-review
+?? backend/src/main/java/com/example/backend/dto/UpdateProfileRequest.java.before-review
+?? backend/src/main/java/com/example/backend/entity/RouteAnalysisHistory.java.before-review
+?? backend/src/main/java/com/example/backend/routing/GeocodingService.java.before-review
+?? backend/src/main/java/com/example/backend/routing/OsrmRoutingService.java.before-review
+?? backend/src/main/java/com/example/backend/routing/RouteObservationService.java.before-review
+?? backend/src/main/java/com/example/backend/service/AuthService.java.before-review
+?? backend/src/main/java/com/example/backend/service/ModelAdminService.java
+?? backend/src/main/java/com/example/backend/service/RouteHistoryService.java.before-review
+?? backend/src/main/java/com/example/backend/service/UserService.java.before-review
+?? backend/src/main/resources/application.properties.before-review
+?? backend/src/test/java/com/example/backend/api/SecurityRulesTest.java.before-review
+?? backend/src/test/java/com/example/backend/auth/AccountDataTest.java
+?? backend/src/test/java/com/example/backend/routing/GeocodingServiceTest.java
+?? backend/src/test/java/com/example/backend/routing/RouteObservationServiceTest.java.before-review
+?? backend/src/test/java/com/example/backend/support/TestFixtures.java.before-review
+?? backend/src/test/resources/application-test.properties.before-review
+?? frontend/src/app/auth.service.ts.before-review
+?? frontend/src/app/feedback-card.component.css.before-review
+?? frontend/src/app/history.page.css.before-review
+?? frontend/src/app/history.page.html.before-fix
+?? frontend/src/app/history.page.html.before-review
+?? frontend/src/app/history.page.ts.before-review
+?? frontend/src/app/history.service.ts.before-review
+?? frontend/src/app/login.page.css.before-review
+?? frontend/src/app/profile.page.css.before-review
+?? frontend/src/app/profile.page.html.before-review
+?? frontend/src/app/profile.page.ts.before-review
+?? frontend/src/app/route-analysis.page.css.before-review
+?? frontend/src/app/route-analysis.page.html.before-fix
+?? frontend/src/app/route-analysis.page.html.before-review
+?? frontend/src/app/route-analysis.page.ts.before-review
+?? frontend/src/app/signup.page.html.before-review
+?? frontend/src/app/signup.page.ts.before-review
+?? frontend/src/app/weather-widget.component.css.before-review
+?? frontend/src/app/weather-widget.component.html.before-review
+?? ml-service/app/main.py.before-fix
+?? ml-service/app/main.py.before-review
+?? ml-service/tests/test_review_fixes.py
+?? ml-service/tests/test_serving_threads.py
+?? start-all.ps1.before-review
+?? start-all.sh.before-review
+?? thesis-evidence/

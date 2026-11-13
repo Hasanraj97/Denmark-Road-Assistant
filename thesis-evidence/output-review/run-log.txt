@@ -1,0 +1,136 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261111095658
+Username: RAJ\hasan
+RunAs User: RAJ\hasan
+Configuration Name: 
+Machine: RAJ (Microsoft Windows NT 10.0.26300.0)
+Host Application: powershell -NoProfile -ExecutionPolicy Bypass -File D:\denmark-road-assistant-main\thesis-evidence\review.ps1
+Process ID: 27244
+PSVersion: 5.1.26100.9818
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9818
+BuildVersion: 10.0.26100.9818
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+
+Denmark Road Assistant - review fixes and evidence
+This takes about 25 to 30 minutes. Please leave this window open.
+PS>TerminatingError(Get-NetTCPConnection): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: No matching MSFT_NetTCPConnection objects found by CIM query for instances of the ROOT/StandardCimv2/MSFT_NetTCPConnection class on the  CIM server: SELECT * FROM MSFT_NetTCPConnection  WHERE ((LocalPort = 8000)) AND ((State = 2)). Verify query parameters and retry."
+PS>TerminatingError(Get-NetTCPConnection): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: No matching MSFT_NetTCPConnection objects found by CIM query for instances of the ROOT/StandardCimv2/MSFT_NetTCPConnection class on the  CIM server: SELECT * FROM MSFT_NetTCPConnection  WHERE ((LocalPort = 8080)) AND ((State = 2)). Verify query parameters and retry."
+PS>TerminatingError(Get-NetTCPConnection): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: No matching MSFT_NetTCPConnection objects found by CIM query for instances of the ROOT/StandardCimv2/MSFT_NetTCPConnection class on the  CIM server: SELECT * FROM MSFT_NetTCPConnection  WHERE ((LocalPort = 4200)) AND ((State = 2)). Verify query parameters and retry."
+PS>TerminatingError(Get-NetTCPConnection): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: No matching MSFT_NetTCPConnection objects found by CIM query for instances of the ROOT/StandardCimv2/MSFT_NetTCPConnection class on the  CIM server: SELECT * FROM MSFT_NetTCPConnection  WHERE ((LocalPort = 8099)) AND ((State = 2)). Verify query parameters and retry."
+
+== A  Putting the fixed source files in place (originals kept as *.before-review)
+   OK  7 files updated, 35 already up to date
+
+== Recording the test machine and the code version
+
+
+
+
+
+
+   OK  environment.txt and git-*.txt written
+
+== 1/8  Backend tests (Maven)
+
+   OK  backend tests passed
+
+== 2/8  ML service tests (pytest)
+
+   OK  ML tests passed
+
+== 3/8  Frontend tests and production build
+
+
+   OK  frontend tests passed
+   OK  production build succeeded
+
+== 4/8  Starting the recording proxy, ML service, backend and frontend
+
+   OK  proxy is up
+PS>TerminatingError(Invoke-WebRequest): "Unable to connect to the remote server"
+   OK  ML service is up
+PS>TerminatingError(Invoke-WebRequest): "Unable to connect to the remote server"
+PS>TerminatingError(Invoke-WebRequest): "Unable to connect to the remote server"
+PS>TerminatingError(Invoke-WebRequest): "Unable to connect to the remote server"
+   OK  backend is up
+PS>TerminatingError(Invoke-WebRequest): "The operation has timed out."
+PS>TerminatingError(Invoke-WebRequest): "The operation has timed out."
+   OK  frontend is up
+
+== 5/8  The 24 system test cases again, with the real outside services
+
+   08:58:17   pass URL /analysis; model strip: MODEL RandomForestClassifier TRAINING ROWS 12000 ACCURACY 85.5%
+   08:58:18   pass Origin "Copenhagen", destination "Roskilde"
+   08:58:18   pass After swap: "Roskilde" to "Copenhagen"
+   08:58:18   pass min 2026-11-11, max 2026-11-17
+   08:58:22   pass 35.6043 km, grade Moderate, not saved, "Save this result" prompt shown
+   08:58:22   pass HTTP 400: "That date has already passed. Pick a day between 2026-11-11 and 2026-11-17."
+   08:58:22   pass HTTP 400: "The weather forecast only reaches 2026-11-17, and this app will not grade a route without a real forecast behind it. Pick a day between 2026-11-11 and 2026-11-17."
+   08:58:25   pass HTTP 404, message shown: "Route not found. Could not match "Qwxyzborg Nowhere" to a place in Denmark. Try a more specific Denmark town, address or postcode. Check the spelling of both places."
+   08:58:25   pass Position set to Copenhagen City Hall Square; origin became "Vestervold, Meatpacking District, Copenhagen, Copenhagen Municipality, Capital Region of Denmark, 1550, Denmark"
+   08:58:28   pass Redirected to /profile; top bar shows "Test Driver"
+   08:58:29   pass Message: "An account with that email already exists."
+   08:58:29 TEST ST12 A wrong password gives a general message that does not reveal whether the email exists
+   08:58:35   pass Both a wrong password and an unknown email show "Invalid email or password."
+   08:58:36   pass Redirected to /analysis; top bar shows "Test Driver"
+   08:58:41   pass 303.3325 km, 205.01000000000002 min, grade Good (50%), leave 15 min early; 19 features, 34 directions, 9 factor rows, probabilities add to 100.10000000000001%; saved as history item 1
+   08:58:54   pass Feedback saved successfully.
+   08:59:11   pass Odense-Aarhus 144.90189999999998 km Good, 4 events; Aalborg-Aarhus 121.2196 km Moderate, 0 events; Copenhagen Airport-Odense 170.9596 km Good, 8 events; Esbjerg-Kolding 75.5562 km Moderate, 2 events; Roskilde-KÃ¸ge 25.3383 km Moderate, 1 events; HelsingÃ¸r-Copenhagen 45.544599999999996 km Moderate, 1 events
+   08:59:17   pass 7 saved analyses, newest first ("HelsingÃ¸r â†’ KÃ¸benhavn" at the top); 2 marked "Review saved"
+   08:59:21   pass Message "Profile updated successfully."; phone still 20304060 after reload
+   08:59:22   pass Redirected to /login?returnUrl=%2Fhistory
+   08:59:22   pass HTTP 401
+   08:59:23   pass median 40 ms, slowest 49 ms
+   08:59:28   pass Result shown; no sideways scrolling (overflow 0px)
+   08:59:40   pass Next instruction "Continue on Vester Farimagsgade" in 560 m; after moving away: "You have left the route. You are 260 m from it â€” rejoin it when it is safe."
+   08:59:41 DONE main: 23 tests, 0 failed
+
+== 6/8  New checks: optional details, retraining blocked, delete and export, keyboard, touch, weather sampling, timings
+
+   08:59:42 TEST R01 Sign up with only name, email and password (phone and address left empty)
+   08:59:44   pass Account created; phone=null, address=null
+   08:59:45   pass Signed-in user: HTTP 403 "Only an administrator can retrain the shared model."; anonymous: HTTP 401; retrain buttons on the page: 0
+   08:59:50   pass Good, model score 50%, 2 counter factor(s): How loaded the road is, Traffic level; weather open-meteo
+   08:59:52   pass 2 saved analyses before, 1 after; GET /api/history/9 now HTTP 404
+   08:59:53   pass Export has exportedAt, profile, savedAnalyses; 1 saved analyses; no password field
+   08:59:54   pass Redirected to /analysis; login with the deleted account: HTTP 401
+   09:00:00   pass 25 different elements reached in 150 Tab presses; explanation, weather strip and directions all reached; 1 of them showed no visible change when focused
+   09:00:08   pass analysis-result: 27 rules passed, no problems; login-error: 18 rules passed, no problems; signup: 18 rules passed, no problems; history: 19 rules passed, no problems; profile: 19 rules passed, no problems
+   09:00:12   pass 21 controls; 1 smaller than 24x24 px; 9 smaller than 44x44 px
+   09:00:13 TEST R10 Weather sampling: straight-line midpoint at departure hour versus halfway along the route at the passing hour
+   09:00:15   pass 8 routes; gap between the two points 2.3 to 132.8 km; grade differs on 3; reconstruction matches the API on all routes: true
+   09:00:17   pass median 137 ms, p95 190 ms, max 190 ms over 15 requests
+   09:00:17 DONE review
+
+== 7/8  Repeat and concurrency timings with the outside services replayed (no load on public servers)
+
+   09:00:19   pass median 59 ms, p95 98 ms, max 98 ms over 15 requests
+   09:00:19   pass all 5 answered 200; median 299 ms, p95 343 ms, max 343 ms; all done after 342 ms
+   09:00:20   pass all 10 answered 200; median 555 ms, p95 611 ms, max 611 ms; all done after 610 ms
+   09:00:21   pass all 20 answered 200; median 1002 ms, p95 1127 ms, max 1137 ms; all done after 1136 ms
+   09:00:21 DONE replay
+
+== 8/8  Weather service switched off: the seasonal fallback must be labelled as such; then the ML service is stopped
+
+   09:00:22   pass weather.source=seasonal-estimate; advisory: "Live weather was not available, so a seasonal average was used instead, which makes this grade less reliable."
+   09:00:28   pass Advisory card and explanation both say a seasonal average was used
+   09:00:28 DONE fallback
+
+   09:00:33 TEST ST24 With the ML service stopped, the app explains that grading failed instead of crashing
+   09:00:39   pass HTTP 502; advisory card says: "Road-condition grading failed. The road-condition model service is unavailable. Start the Python ml-service on port 8000."
+   09:00:40 DONE mldown: 24 tests, 0 failed
+
+== Stopping everything and removing the test database
+   OK  All done. Results are in D:\denmark-road-assistant-main\thesis-evidence\output-review
+
+You can close this window now and tell Claude it has finished.
+**********************
+Windows PowerShell transcript end
+End time: 20261111100043
+**********************

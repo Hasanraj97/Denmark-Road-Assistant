@@ -1,0 +1,716 @@
+{
+  "browser": "157.0.8103.39",
+  "mainReview": {
+    "prediction": {
+      "roadConditionLabel": "Good",
+      "confidence": 0.4996,
+      "leaveEarlyMinutes": 15,
+      "advisory": "Conditions look mostly good on this route, with only light disruption likely. As a rough rule of thumb, not a measured delay, leaving about 15 minutes early gives you a buffer. The strongest single factor was road grade. The weather used here is a live Open-Meteo forecast for the halfway point of your route. The model is split between neighbouring grades, so treat this as a rough guide.",
+      "influentialFeatures": [
+        {
+          "feature": "Road grade",
+          "value": "0.83",
+          "impact": "The model leaned moderately on the grade of road implied by the sustained speed when settling on \"Good\"."
+        },
+        {
+          "feature": "Average speed",
+          "value": "88.78 km/h",
+          "impact": "The model leaned slightly on the average speed the routing engine expects when settling on \"Good\"."
+        },
+        {
+          "feature": "Distance",
+          "value": "303.33 km",
+          "impact": "The model leaned slightly on the length of the trip when settling on \"Good\"."
+        },
+        {
+          "feature": "Accident exposure",
+          "value": "0.32",
+          "impact": "The model leaned slightly on the combination of traffic and weather that raises accident exposure when settling on \"Good\"."
+        }
+      ],
+      "classProbabilities": {
+        "Excellent": 0.0835,
+        "Good": 0.4996,
+        "Moderate": 0.3798,
+        "Poor": 0.035,
+        "Very Poor": 0.0021
+      },
+      "features": {
+        "distanceKm": 303.33,
+        "estimatedDurationMin": 205.01,
+        "avgSpeedKmh": 88.78,
+        "roadTypeScore": 0.8341,
+        "trafficLevel": 0.7667,
+        "weatherRisk": 0.0733,
+        "rainfallMm": 0,
+        "timeOfDay": "morning_peak",
+        "dayOfWeek": "thursday",
+        "urbanDensity": 0.72,
+        "accidentRiskScore": 0.3187,
+        "constructionRiskScore": 0.396,
+        "elevationVariation": 22.2,
+        "temperatureC": 5.9,
+        "humidity": 0.92,
+        "windSpeedKmh": 12.2,
+        "season": "autumn",
+        "regionType": "urban",
+        "vehicleLoadFactor": 0.632
+      },
+      "syntheticPrediction": true,
+      "disclaimer": "The weather in this advisory is a real Open-Meteo forecast. The road-condition grade comes from a model trained on generated data, so treat it as an illustration of the method rather than a measurement of Danish roads.",
+      "counterFeatures": [
+        {
+          "feature": "How loaded the road is",
+          "value": "0.63",
+          "impact": "This made \"Good\" less likely, so it pulls towards a different grade."
+        },
+        {
+          "feature": "Traffic level",
+          "value": "0.77",
+          "impact": "This made \"Good\" less likely, so it pulls towards a different grade."
+        }
+      ]
+    },
+    "weather": {
+      "temperatureC": 5.9,
+      "rainfallMm": 0,
+      "humidity": 0.92,
+      "windSpeedKmh": 12.2,
+      "source": "open-meteo",
+      "live": true
+    },
+    "features": {
+      "distanceKm": 303.33,
+      "estimatedDurationMin": 205.01,
+      "avgSpeedKmh": 88.78,
+      "roadTypeScore": 0.8341,
+      "trafficLevel": 0.7667,
+      "weatherRisk": 0.0733,
+      "rainfallMm": 0,
+      "timeOfDay": "morning_peak",
+      "dayOfWeek": "thursday",
+      "urbanDensity": 0.72,
+      "accidentRiskScore": 0.3187,
+      "constructionRiskScore": 0.396,
+      "elevationVariation": 22.2,
+      "temperatureC": 5.9,
+      "humidity": 0.92,
+      "windSpeedKmh": 12.2,
+      "season": "autumn",
+      "regionType": "urban",
+      "vehicleLoadFactor": 0.632
+    },
+    "disclaimer": "The weather in this advisory is a real Open-Meteo forecast. The road-condition grade comes from a model trained on generated data, so treat it as an illustration of the method rather than a measurement of Danish roads."
+  },
+  "exportKeys": [
+    "exportedAt",
+    "profile",
+    "savedAnalyses"
+  ],
+  "keyboard": {
+    "tabPresses": 150,
+    "uniqueStops": 25,
+    "regions": {
+      "explanation": true,
+      "weatherStrip": true,
+      "directions": true
+    },
+    "invisible": [
+      {
+        "key": "9",
+        "tag": "input",
+        "cls": "ng-pristine ng-valid ng-touched",
+        "label": "departureDate",
+        "visible": false
+      }
+    ],
+    "invisibleCount": 1
+  },
+  "axeAfter": {
+    "analysis-result": {
+      "passes": 27,
+      "passIds": [
+        "aria-allowed-attr",
+        "aria-conditional-attr",
+        "aria-deprecated-role",
+        "aria-hidden-body",
+        "aria-hidden-focus",
+        "aria-prohibited-attr",
+        "aria-required-attr",
+        "aria-roles",
+        "aria-valid-attr-value",
+        "aria-valid-attr",
+        "avoid-inline-spacing",
+        "button-name",
+        "bypass",
+        "color-contrast",
+        "document-title",
+        "duplicate-id-aria",
+        "form-field-multiple-labels",
+        "html-has-lang",
+        "html-lang-valid",
+        "image-alt",
+        "label",
+        "link-name",
+        "list",
+        "listitem",
+        "meta-viewport",
+        "nested-interactive",
+        "scrollable-region-focusable"
+      ],
+      "violations": []
+    },
+    "login-error": {
+      "passes": 18,
+      "passIds": [
+        "aria-allowed-attr",
+        "aria-conditional-attr",
+        "aria-hidden-body",
+        "aria-prohibited-attr",
+        "aria-valid-attr-value",
+        "aria-valid-attr",
+        "button-name",
+        "bypass",
+        "document-title",
+        "form-field-multiple-labels",
+        "html-has-lang",
+        "html-lang-valid",
+        "image-alt",
+        "label",
+        "link-in-text-block",
+        "link-name",
+        "meta-viewport",
+        "nested-interactive"
+      ],
+      "violations": []
+    },
+    "signup": {
+      "passes": 18,
+      "passIds": [
+        "aria-allowed-attr",
+        "aria-conditional-attr",
+        "aria-hidden-body",
+        "aria-prohibited-attr",
+        "aria-valid-attr-value",
+        "aria-valid-attr",
+        "button-name",
+        "bypass",
+        "document-title",
+        "form-field-multiple-labels",
+        "html-has-lang",
+        "html-lang-valid",
+        "image-alt",
+        "label",
+        "link-in-text-block",
+        "link-name",
+        "meta-viewport",
+        "nested-interactive"
+      ],
+      "violations": []
+    },
+    "history": {
+      "passes": 19,
+      "passIds": [
+        "aria-allowed-attr",
+        "aria-conditional-attr",
+        "aria-hidden-body",
+        "aria-prohibited-attr",
+        "aria-valid-attr-value",
+        "aria-valid-attr",
+        "button-name",
+        "bypass",
+        "color-contrast",
+        "document-title",
+        "duplicate-id-aria",
+        "form-field-multiple-labels",
+        "html-has-lang",
+        "html-lang-valid",
+        "image-alt",
+        "label",
+        "link-name",
+        "meta-viewport",
+        "nested-interactive"
+      ],
+      "violations": []
+    },
+    "profile": {
+      "passes": 19,
+      "passIds": [
+        "aria-allowed-attr",
+        "aria-conditional-attr",
+        "aria-hidden-body",
+        "aria-prohibited-attr",
+        "aria-valid-attr-value",
+        "aria-valid-attr",
+        "button-name",
+        "bypass",
+        "color-contrast",
+        "document-title",
+        "duplicate-id-aria",
+        "form-field-multiple-labels",
+        "html-has-lang",
+        "html-lang-valid",
+        "image-alt",
+        "label",
+        "link-name",
+        "meta-viewport",
+        "nested-interactive"
+      ],
+      "violations": []
+    }
+  },
+  "touch": {
+    "total": 21,
+    "under24": 1,
+    "under44": 9,
+    "examples24": [
+      {
+        "w": 51,
+        "h": 14,
+        "what": "Leaflet"
+      }
+    ],
+    "examples44": [
+      {
+        "w": 368,
+        "h": 34,
+        "what": "Denmark Road Assistant"
+      },
+      {
+        "w": 40,
+        "h": 40,
+        "what": "Swap origin and destination"
+      },
+      {
+        "w": 183,
+        "h": 31,
+        "what": "Copenhagen → Roskilde"
+      },
+      {
+        "w": 141,
+        "h": 31,
+        "what": "Odense → Aarhus"
+      },
+      {
+        "w": 143,
+        "h": 31,
+        "what": "Aalborg → Aarhus"
+      },
+      {
+        "w": 223,
+        "h": 31,
+        "what": "Copenhagen Airport → Odense"
+      },
+      {
+        "w": 30,
+        "h": 31,
+        "what": "Zoom in"
+      },
+      {
+        "w": 30,
+        "h": 30,
+        "what": "Zoom out"
+      },
+      {
+        "w": 51,
+        "h": 14,
+        "what": "Leaflet"
+      }
+    ]
+  },
+  "weatherSampling": [
+    {
+      "route": "Copenhagen-Aarhus",
+      "km": 303.3325,
+      "minutes": 205,
+      "pointGapKm": 82,
+      "midpointOffRouteKm": 52.1,
+      "oldWeather": {
+        "temperatureC": 7.7,
+        "rainfallMm": 0.7,
+        "humidity": 0.82,
+        "windSpeedKmh": 35.3,
+        "source": "open-meteo"
+      },
+      "newWeather": {
+        "temperatureC": 5.9,
+        "rainfallMm": 0,
+        "humidity": 0.92,
+        "windSpeedKmh": 12.2,
+        "source": "open-meteo",
+        "live": true
+      },
+      "apiGrade": "Good",
+      "newGrade": "Good",
+      "oldGrade": "Moderate",
+      "oldWeatherRisk": 0.1843,
+      "newWeatherRisk": 0.0733
+    },
+    {
+      "route": "Copenhagen-Aalborg",
+      "km": 414.4132,
+      "minutes": 272,
+      "pointGapKm": 132.8,
+      "midpointOffRouteKm": 68.9,
+      "oldWeather": {
+        "temperatureC": 6.2,
+        "rainfallMm": 0,
+        "humidity": 0.81,
+        "windSpeedKmh": 32.4,
+        "source": "open-meteo"
+      },
+      "newWeather": {
+        "temperatureC": 6.3,
+        "rainfallMm": 0,
+        "humidity": 0.89,
+        "windSpeedKmh": 15.5,
+        "source": "open-meteo",
+        "live": true
+      },
+      "apiGrade": "Good",
+      "newGrade": "Good",
+      "oldGrade": "Moderate",
+      "oldWeatherRisk": 0.1333,
+      "newWeatherRisk": 0.0661
+    },
+    {
+      "route": "Esbjerg-Copenhagen",
+      "km": 299.22429999999997,
+      "minutes": 200,
+      "pointGapKm": 24.6,
+      "midpointOffRouteKm": 23.5,
+      "oldWeather": {
+        "temperatureC": 7,
+        "rainfallMm": 0.1,
+        "humidity": 0.8,
+        "windSpeedKmh": 29.9,
+        "source": "open-meteo"
+      },
+      "newWeather": {
+        "temperatureC": 6,
+        "rainfallMm": 0,
+        "humidity": 0.92,
+        "windSpeedKmh": 12.2,
+        "source": "open-meteo",
+        "live": true
+      },
+      "apiGrade": "Good",
+      "newGrade": "Good",
+      "oldGrade": "Good",
+      "oldWeatherRisk": 0.1206,
+      "newWeatherRisk": 0.0733
+    },
+    {
+      "route": "Copenhagen-Odense",
+      "km": 163.21710000000002,
+      "minutes": 121,
+      "pointGapKm": 11.5,
+      "midpointOffRouteKm": 10.4,
+      "oldWeather": {
+        "temperatureC": 5.9,
+        "rainfallMm": 0,
+        "humidity": 0.96,
+        "windSpeedKmh": 13.7,
+        "source": "open-meteo"
+      },
+      "newWeather": {
+        "temperatureC": 6.1,
+        "rainfallMm": 0.4,
+        "humidity": 0.93,
+        "windSpeedKmh": 19.8,
+        "source": "open-meteo",
+        "live": true
+      },
+      "apiGrade": "Moderate",
+      "newGrade": "Moderate",
+      "oldGrade": "Good",
+      "oldWeatherRisk": 0.0867,
+      "newWeatherRisk": 0.1213
+    },
+    {
+      "route": "Aarhus-Aalborg",
+      "km": 120.1164,
+      "minutes": 82,
+      "pointGapKm": 15.7,
+      "midpointOffRouteKm": 11,
+      "oldWeather": {
+        "temperatureC": 3.7,
+        "rainfallMm": 0.1,
+        "humidity": 0.97,
+        "windSpeedKmh": 13,
+        "source": "open-meteo"
+      },
+      "newWeather": {
+        "temperatureC": 3.2,
+        "rainfallMm": 0,
+        "humidity": 0.96,
+        "windSpeedKmh": 14.4,
+        "source": "open-meteo",
+        "live": true
+      },
+      "apiGrade": "Good",
+      "newGrade": "Good",
+      "oldGrade": "Good",
+      "oldWeatherRisk": 0.0945,
+      "newWeatherRisk": 0.0867
+    },
+    {
+      "route": "Odense-Esbjerg",
+      "km": 138.0902,
+      "minutes": 95,
+      "pointGapKm": 10.3,
+      "midpointOffRouteKm": 9,
+      "oldWeather": {
+        "temperatureC": 4.8,
+        "rainfallMm": 0,
+        "humidity": 0.95,
+        "windSpeedKmh": 9.4,
+        "source": "open-meteo"
+      },
+      "newWeather": {
+        "temperatureC": 4.8,
+        "rainfallMm": 0,
+        "humidity": 0.95,
+        "windSpeedKmh": 11.5,
+        "source": "open-meteo",
+        "live": true
+      },
+      "apiGrade": "Good",
+      "newGrade": "Good",
+      "oldGrade": "Good",
+      "oldWeatherRisk": 0.0833,
+      "newWeatherRisk": 0.0833
+    },
+    {
+      "route": "Kolding-Aarhus",
+      "km": 97.3504,
+      "minutes": 70,
+      "pointGapKm": 7.2,
+      "midpointOffRouteKm": 7.2,
+      "oldWeather": {
+        "temperatureC": 4.7,
+        "rainfallMm": 0.3,
+        "humidity": 0.94,
+        "windSpeedKmh": 11.2,
+        "source": "open-meteo"
+      },
+      "newWeather": {
+        "temperatureC": 4.5,
+        "rainfallMm": 0,
+        "humidity": 0.95,
+        "windSpeedKmh": 13.7,
+        "source": "open-meteo",
+        "live": true
+      },
+      "apiGrade": "Moderate",
+      "newGrade": "Moderate",
+      "oldGrade": "Moderate",
+      "oldWeatherRisk": 0.0935,
+      "newWeatherRisk": 0.0833
+    },
+    {
+      "route": "Copenhagen-Roskilde",
+      "km": 35.6043,
+      "minutes": 37,
+      "pointGapKm": 2.3,
+      "midpointOffRouteKm": 0.9,
+      "oldWeather": {
+        "temperatureC": 5.6,
+        "rainfallMm": 0,
+        "humidity": 0.93,
+        "windSpeedKmh": 16.2,
+        "source": "open-meteo"
+      },
+      "newWeather": {
+        "temperatureC": 5.9,
+        "rainfallMm": 0,
+        "humidity": 0.92,
+        "windSpeedKmh": 16.2,
+        "source": "open-meteo",
+        "live": true
+      },
+      "apiGrade": "Moderate",
+      "newGrade": "Moderate",
+      "oldGrade": "Moderate",
+      "oldWeatherRisk": 0.0833,
+      "newWeatherRisk": 0.08
+    }
+  ],
+  "timingLive": {
+    "rounds": [
+      [
+        126,
+        163,
+        127,
+        122,
+        190
+      ],
+      [
+        144,
+        137,
+        129,
+        123,
+        171
+      ],
+      [
+        138,
+        142,
+        125,
+        111,
+        175
+      ]
+    ],
+    "all": {
+      "n": 15,
+      "median": 137,
+      "p95": 190,
+      "max": 190,
+      "min": 111
+    }
+  },
+  "timingReplay": {
+    "rounds": [
+      [
+        66,
+        69,
+        50,
+        47,
+        96
+      ],
+      [
+        47,
+        59,
+        50,
+        51,
+        98
+      ],
+      [
+        45,
+        71,
+        67,
+        49,
+        93
+      ]
+    ],
+    "all": {
+      "n": 15,
+      "median": 59,
+      "p95": 98,
+      "max": 98,
+      "min": 45
+    }
+  },
+  "concurrent5": {
+    "ok": 5,
+    "wall": 342,
+    "n": 5,
+    "median": 299,
+    "p95": 343,
+    "max": 343,
+    "min": 211,
+    "statuses": [
+      200,
+      200,
+      200,
+      200,
+      200
+    ]
+  },
+  "concurrent10": {
+    "ok": 10,
+    "wall": 610,
+    "n": 10,
+    "median": 555,
+    "p95": 611,
+    "max": 611,
+    "min": 249,
+    "statuses": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200
+    ]
+  },
+  "concurrent20": {
+    "ok": 20,
+    "wall": 1136,
+    "n": 20,
+    "median": 1002,
+    "p95": 1127,
+    "max": 1137,
+    "min": 749,
+    "statuses": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200
+    ]
+  },
+  "proxyReplay": {
+    "before": {
+      "mode": "replay",
+      "weatherDown": false,
+      "recorded": 40,
+      "live": {
+        "nominatim": 11,
+        "osrm": 41,
+        "openmeteo": 39,
+        "events": 2
+      },
+      "replay": {},
+      "missing": 0,
+      "weatherRefused": 0
+    },
+    "after": {
+      "mode": "replay",
+      "weatherDown": false,
+      "recorded": 40,
+      "live": {
+        "nominatim": 11,
+        "osrm": 41,
+        "openmeteo": 39,
+        "events": 2
+      },
+      "replay": {
+        "osrm": 50,
+        "openmeteo": 50
+      },
+      "missing": 0,
+      "weatherRefused": 0
+    }
+  },
+  "fallback": {
+    "weather": {
+      "temperatureC": 9.5,
+      "rainfallMm": 0.5,
+      "humidity": 0.83,
+      "windSpeedKmh": 20,
+      "source": "seasonal-estimate",
+      "live": false
+    },
+    "disclaimer": "Live weather was not available for this request, so a seasonal average was used and the grade is less reliable than usual. The road-condition grade comes from a model trained on generated data, so treat it as an illustration of the method rather than a measurement of Danish roads.",
+    "advisory": "Conditions look mostly good on this route, with only light disruption likely. As a rough rule of thumb, not a measured delay, leaving about 15 minutes early gives you a buffer. The strongest single factor was road grade. Live weather was not available, so a seasonal average was used instead, which makes this grade less reliable. The model is split between neighbouring grades, so treat this as a rough guide."
+  }
+}

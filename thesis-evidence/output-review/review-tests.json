@@ -1,0 +1,138 @@
+[
+  {
+    "id": "R01",
+    "name": "Sign up with only name, email and password (phone and address left empty)",
+    "phase": "review",
+    "status": "pass",
+    "detail": "Account created; phone=null, address=null",
+    "ms": 1905
+  },
+  {
+    "id": "R02",
+    "name": "An ordinary signed-in user cannot retrain the shared model, and the app shows no retrain button",
+    "phase": "review",
+    "status": "pass",
+    "detail": "Signed-in user: HTTP 403 \"Only an administrator can retrain the shared model.\"; anonymous: HTTP 401; retrain buttons on the page: 0",
+    "ms": 371
+  },
+  {
+    "id": "R03",
+    "name": "The advisory shows \"Model score\", a \"Rough buffer\" and the factors pulling the other way",
+    "phase": "review",
+    "status": "pass",
+    "detail": "Good, model score 50%, 2 counter factor(s): How loaded the road is, Traffic level; weather open-meteo",
+    "ms": 5232
+  },
+  {
+    "id": "R04",
+    "name": "A saved analysis can be deleted from the History page",
+    "phase": "review",
+    "status": "pass",
+    "detail": "2 saved analyses before, 1 after; GET /api/history/9 now HTTP 404",
+    "ms": 2602
+  },
+  {
+    "id": "R05",
+    "name": "The user can download everything the app stores about them",
+    "phase": "review",
+    "status": "pass",
+    "detail": "Export has exportedAt, profile, savedAnalyses; 1 saved analyses; no password field",
+    "ms": 1109
+  },
+  {
+    "id": "R06",
+    "name": "The user can delete the account, after which the login no longer works",
+    "phase": "review",
+    "status": "pass",
+    "detail": "Redirected to /analysis; login with the deleted account: HTTP 401",
+    "ms": 773
+  },
+  {
+    "id": "R07",
+    "name": "Keyboard: the scrolling areas can be reached with Tab and every focus stop is visible",
+    "phase": "review",
+    "status": "pass",
+    "detail": "25 different elements reached in 150 Tab presses; explanation, weather strip and directions all reached; 1 of them showed no visible change when focused",
+    "ms": 5297
+  },
+  {
+    "id": "R08",
+    "name": "Automated accessibility check repeated after the contrast and keyboard fixes",
+    "phase": "review",
+    "status": "pass",
+    "detail": "analysis-result: 27 rules passed, no problems; login-error: 18 rules passed, no problems; signup: 18 rules passed, no problems; history: 19 rules passed, no problems; profile: 19 rules passed, no problems",
+    "ms": 8297
+  },
+  {
+    "id": "R09",
+    "name": "Touch targets on a phone-sized screen (Pixel 7 size)",
+    "phase": "review",
+    "status": "pass",
+    "detail": "21 controls; 1 smaller than 24x24 px; 9 smaller than 44x44 px",
+    "ms": 4110
+  },
+  {
+    "id": "R10",
+    "name": "Weather sampling: straight-line midpoint at departure hour versus halfway along the route at the passing hour",
+    "phase": "review",
+    "status": "pass",
+    "detail": "8 routes; gap between the two points 2.3 to 132.8 km; grade differs on 3; reconstruction matches the API on all routes: true",
+    "ms": 2385
+  },
+  {
+    "id": "R11",
+    "name": "Live timings: five routes, three rounds, one request at a time",
+    "phase": "review",
+    "status": "pass",
+    "detail": "median 137 ms, p95 190 ms, max 190 ms over 15 requests",
+    "ms": 2127
+  },
+  {
+    "id": "P01",
+    "name": "Replayed outside services: five routes, three rounds, one request at a time",
+    "phase": "replay",
+    "status": "pass",
+    "detail": "median 59 ms, p95 98 ms, max 98 ms over 15 requests",
+    "ms": 960
+  },
+  {
+    "id": "P02",
+    "name": "5 analyses sent at the same moment (replayed outside services)",
+    "phase": "replay",
+    "status": "pass",
+    "detail": "all 5 answered 200; median 299 ms, p95 343 ms, max 343 ms; all done after 342 ms",
+    "ms": 345
+  },
+  {
+    "id": "P03",
+    "name": "10 analyses sent at the same moment (replayed outside services)",
+    "phase": "replay",
+    "status": "pass",
+    "detail": "all 10 answered 200; median 555 ms, p95 611 ms, max 611 ms; all done after 610 ms",
+    "ms": 613
+  },
+  {
+    "id": "P04",
+    "name": "20 analyses sent at the same moment (replayed outside services)",
+    "phase": "replay",
+    "status": "pass",
+    "detail": "all 20 answered 200; median 1002 ms, p95 1127 ms, max 1137 ms; all done after 1136 ms",
+    "ms": 1141
+  },
+  {
+    "id": "F01",
+    "name": "With Open-Meteo unreachable, the API says the weather is a seasonal estimate (regression test for the source bug)",
+    "phase": "fallback",
+    "status": "pass",
+    "detail": "weather.source=seasonal-estimate; advisory: \"Live weather was not available, so a seasonal average was used instead, which makes this grade less reliable.\"",
+    "ms": 317
+  },
+  {
+    "id": "F02",
+    "name": "The same fallback is shown in the app",
+    "phase": "fallback",
+    "status": "pass",
+    "detail": "Advisory card and explanation both say a seasonal average was used",
+    "ms": 5128
+  }
+]

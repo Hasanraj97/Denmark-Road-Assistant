@@ -1,0 +1,14 @@
+npm notice run frontend@0.0.0 npx
+npm notice run ng build
+[33m❯[39m Building...
+[32m✔[39m Building...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m        [2m | [22m [1mRaw size[22m[2m | [22m[1mEstimated transfer size[22m
+[32mmain-FZ5YDWLH.js[39m   [2m | [22m[2mmain[22m         [2m | [22m[36m571.70 kB[39m[2m | [22m              [36m142.48 kB[39m
+[32mstyles-SI5YG6FA.css[39m[2m | [22m[2mstyles[22m       [2m | [22m [36m20.51 kB[39m[2m | [22m                [36m4.55 kB[39m
+
+[1m [22m                  [2m | [22m[1mInitial total[22m[2m | [22m[1m592.21 kB[22m[2m | [22m              [1m147.03 kB[22m
+
+Application bundle generation complete. [5.509 seconds] - 2026-11-11T08:57:43.086Z
+
+Output location: D:\denmark-road-assistant-main\frontend\dist\frontend
+
