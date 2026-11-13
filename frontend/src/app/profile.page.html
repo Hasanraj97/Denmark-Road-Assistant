@@ -35,11 +35,11 @@
           <input type="email" formControlName="email" />
         </label>
         <label>
-          <span>Phone</span>
+          <span>Phone (optional)</span>
           <input type="text" formControlName="phone" />
         </label>
         <label>
-          <span>Address</span>
+          <span>Address (optional)</span>
           <input type="text" formControlName="address" />
         </label>
 
@@ -47,6 +47,26 @@
           {{ saving() ? 'Saving profile...' : 'Save changes' }}
         </button>
       </form>
+
+      <section class="profile-privacy" aria-labelledby="privacy-heading">
+        <h2 id="privacy-heading">Your data</h2>
+        <p>
+          The app keeps your details and saved analyses until you delete them. You can download
+          everything it stores about you, or delete your account together with all saved trips and feedback.
+        </p>
+        <div class="privacy-actions">
+          <button type="button" class="secondary" (click)="downloadMyData()">Download my data</button>
+          @if (!confirmingDelete()) {
+            <button type="button" class="danger" (click)="confirmingDelete.set(true)">Delete my account</button>
+          } @else {
+            <span class="confirm-text">This cannot be undone. Delete the account and all saved trips?</span>
+            <button type="button" class="danger" [disabled]="deleting()" (click)="deleteAccount()">
+              {{ deleting() ? 'Deleting...' : 'Yes, delete everything' }}
+            </button>
+            <button type="button" class="secondary" (click)="confirmingDelete.set(false)">Cancel</button>
+          }
+        </div>
+      </section>
     }
   </div>
 </section>

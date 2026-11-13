@@ -22,8 +22,11 @@ Two things changed structurally from the original version:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import os
+import shutil
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
@@ -59,6 +62,9 @@ MODEL_DIR = BASE_DIR / "models"
 DATASET_PATH = DATA_DIR / "synthetic_denmark_routes.csv"
 MODEL_PATH = MODEL_DIR / "road_condition_model.joblib"
 METADATA_PATH = MODEL_DIR / "road_condition_model_metadata.json"
+# The model that was live before the latest retrain, kept so it can be restored.
+PREVIOUS_MODEL_PATH = MODEL_DIR / "road_condition_model.previous.joblib"
+PREVIOUS_METADATA_PATH = MODEL_DIR / "road_condition_model_metadata.previous.json"
 
 SAMPLE_COUNT = 12000
 RANDOM_SEED = 42
@@ -79,6 +85,10 @@ class WeatherInput(BaseModel):
     rainfall_mm: float = Field(alias="rainfallMm")
     humidity: float
     wind_speed_kmh: float = Field(alias="windSpeedKmh")
+    # Where the weather came from: "open-meteo" for a live forecast, or
+    # "seasonal-estimate" when the backend had to fall back. The advisory must
+    # never call a fallback "live", so a missing value is treated as unknown.
+    source: str | None = None
 
     model_config = {"populate_by_name": True}
 
@@ -146,6 +156,8 @@ class PredictionResponse(BaseModel):
     leaveEarlyMinutes: int
     advisory: str
     influentialFeatures: list[FeatureInfluence]
+    # Features that make the predicted grade LESS likely (largest first).
+    counterFeatures: list[FeatureInfluence] = []
     classProbabilities: dict[str, float]
     features: dict[str, Any]
     syntheticPrediction: bool = True
@@ -197,6 +209,14 @@ FEATURE_UNITS = {
 }
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _to_camel_case(name: str) -> str:
     head, *tail = name.split("_")
     return head + "".join(part.title() for part in tail)
@@ -234,18 +254,58 @@ class ModelManager:
     # -- lifecycle ----------------------------------------------------------
 
     def startup(self) -> None:
+        """Load the saved model, and refuse to serve one that does not check out.
+
+        Training is a deliberate step. If no model exists the service only trains
+        one when ML_BOOTSTRAP_TRAINING=1 is set (the start scripts set it for the
+        very first run); otherwise it stops with a clear message instead of quietly
+        producing a new model that could change every advisory.
+        """
         if MODEL_PATH.exists() and METADATA_PATH.exists() and DATASET_PATH.exists():
-            self.pipeline = joblib.load(MODEL_PATH)
             self.metadata = json.loads(METADATA_PATH.read_text(encoding="utf-8"))
+            actual = _sha256(MODEL_PATH)
+            expected = self.metadata.get("model_sha256")
+            if expected is None:
+                # Model saved before checksums existed: record it once, loudly.
+                logger.warning("Model has no recorded checksum; recording %s now.", actual)
+                self.metadata["model_sha256"] = actual
+                METADATA_PATH.write_text(json.dumps(self.metadata, indent=2), encoding="utf-8")
+            elif expected != actual:
+                raise RuntimeError(
+                    "The saved model does not match its recorded checksum, so it will not be served. "
+                    "Restore the previous model or retrain deliberately."
+                )
+            self.pipeline = joblib.load(MODEL_PATH)
+            self._serve_single_threaded()
             self._load_baseline()
             logger.info(
-                "Loaded saved model. Accuracy %s on %s samples.",
+                "Loaded model version %s. Accuracy %s on %s samples.",
+                self.metadata.get("model_version", "unversioned"),
                 self.metadata.get("accuracy"),
                 self.metadata.get("sample_count"),
             )
-        else:
-            logger.info("No saved model found. Training a new one, this takes a moment...")
+        elif os.environ.get("ML_BOOTSTRAP_TRAINING") == "1":
+            logger.info("No saved model found and ML_BOOTSTRAP_TRAINING=1: training the first model.")
             self.retrain()
+        else:
+            raise RuntimeError(
+                "No trained model found. Training is a deliberate step: start the service once "
+                "with ML_BOOTSTRAP_TRAINING=1 (the start-all scripts do this on first run)."
+            )
+
+    def _serve_single_threaded(self) -> None:
+        """Predict on one thread; training still uses every core.
+
+        With n_jobs=-1 every predict_proba call starts and stops a joblib thread
+        pool. Under Python 3.14 on Windows that pool can crash when it shuts down
+        ("concurrent send_bytes() calls are not supported"), and the request then
+        fails with a 500. The system test on 9 November 2026 hit this once in
+        about thirty predictions. A request only scores one route, plus a few
+        rows for the explanation, so one thread is just as fast, and the pool and
+        the crash are avoided entirely. Predictions are unchanged.
+        """
+        if self.pipeline is not None:
+            self.pipeline.named_steps["classifier"].set_params(n_jobs=1)
 
     def _load_baseline(self) -> None:
         frame = pd.read_csv(DATASET_PATH)
@@ -346,8 +406,17 @@ class ModelManager:
             "synthetic_disclaimer": DISCLAIMER,
         }
 
+        self._serve_single_threaded()
+
+        # Keep the model that was live until now, so a bad retrain can be rolled back.
+        if MODEL_PATH.exists() and METADATA_PATH.exists():
+            shutil.copy2(MODEL_PATH, PREVIOUS_MODEL_PATH)
+            shutil.copy2(METADATA_PATH, PREVIOUS_METADATA_PATH)
+
         # compress=3 trades a little load time for a much smaller file.
         joblib.dump(self.pipeline, MODEL_PATH, compress=3)
+        self.metadata["model_version"] = datetime.now().strftime("%Y%m%d-%H%M%S") + f"-seed{RANDOM_SEED}"
+        self.metadata["model_sha256"] = _sha256(MODEL_PATH)
         METADATA_PATH.write_text(json.dumps(self.metadata, indent=2), encoding="utf-8")
 
         logger.info("Trained model. Accuracy %.4f", accuracy)
@@ -400,7 +469,7 @@ class ModelManager:
         }
         ordered_probabilities = {label: probability_map.get(label, 0.0) for label in LABELS}
 
-        influences = self._explain(features, predicted_label, predicted_index)
+        influences, counter = self._explain(features, predicted_label, predicted_index)
         leave_early = self._leave_early_minutes(predicted_label, features)
         advisory = self._advisory_text(
             predicted_label, confidence, leave_early, features, influences, weather_source
@@ -412,13 +481,14 @@ class ModelManager:
             leaveEarlyMinutes=leave_early,
             advisory=advisory,
             influentialFeatures=influences,
+            counterFeatures=counter,
             classProbabilities=ordered_probabilities,
             features=_features_for_api(features),
         )
 
     def _explain(
         self, features: dict[str, Any], predicted_label: str, predicted_index: int
-    ) -> list[FeatureInfluence]:
+    ) -> tuple[list[FeatureInfluence], list[FeatureInfluence]]:
         """
         Measure what actually drove this prediction.
 
@@ -474,7 +544,21 @@ class ModelManager:
                            "so the grade rests on the overall picture rather than any one factor.",
                 )
             )
-        return influences
+
+        # The other side of the story: features whose typical value would make
+        # this grade MORE likely, i.e. the actual value pulls away from it.
+        counter: list[FeatureInfluence] = []
+        for column, contribution in sorted(contributions, key=lambda item: item[1])[:2]:
+            if contribution >= -0.005:
+                continue
+            counter.append(
+                FeatureInfluence(
+                    feature=FEATURE_LABELS.get(column, column),
+                    value=_format_value(column, features[column]),
+                    impact=f"This made \"{predicted_label}\" less likely, so it pulls towards a different grade.",
+                )
+            )
+        return influences, counter
 
     @staticmethod
     def _impact_sentence(column: str, value: Any, contribution: float, label: str) -> str:
@@ -482,7 +566,7 @@ class ModelManager:
         explanations = {
             "traffic_level": "how busy the road is expected to be",
             "weather_risk": "the combined weather hazard from rain, ice, wind and mist",
-            "rainfall_mm": "the amount of rain forecast for the departure hour",
+            "rainfall_mm": "the amount of rain forecast halfway along the route, at the hour you pass it",
             "wind_speed_kmh": "the forecast wind, which matters on exposed stretches and bridges",
             "temperature_c": "the temperature, which decides whether ice is a possibility",
             "humidity": "the humidity, used here as a stand-in for mist and fog",
@@ -536,7 +620,7 @@ class ModelManager:
         leave_sentence = (
             "You should not need to leave early unless conditions change."
             if leave_early == 0
-            else f"Leaving about {leave_early} minutes early would be a sensible buffer."
+            else f"As a rough rule of thumb, not a measured delay, leaving about {leave_early} minutes early gives you a buffer."
         )
 
         reason_sentence = (
@@ -545,16 +629,23 @@ class ModelManager:
             else "No single factor dominated this estimate."
         )
 
-        weather_sentence = (
-            "The weather used here is a live Open-Meteo forecast for the middle of your route."
-            if weather_source == "open-meteo"
-            else "Live weather was not available, so a seasonal estimate was used instead."
-        )
+        if weather_source == "open-meteo":
+            weather_sentence = "The weather used here is a live Open-Meteo forecast for the halfway point of your route."
+        elif weather_source == "seasonal-estimate":
+            weather_sentence = (
+                "Live weather was not available, so a seasonal average was used instead, "
+                "which makes this grade less reliable."
+            )
+        else:
+            weather_sentence = "The source of the weather data is unknown, so treat this grade with care."
 
+        # The percentage is the model's own vote share, not a calibrated chance
+        # of real conditions, so the wording avoids the word "confident".
         confidence_sentence = (
-            "The model is fairly confident in this grade."
+            "The model clearly favours this grade over the others, but this is the model's own score, "
+            "not a measured probability."
             if confidence >= 0.60
-            else "The model is not strongly confident, so treat this as a guide rather than a certainty."
+            else "The model is split between neighbouring grades, so treat this as a rough guide."
         )
 
         return " ".join(
@@ -618,7 +709,7 @@ def predict_road_condition(request: PredictionRequest) -> PredictionResponse:
             ),
             rng=None,
         )
-        return manager.predict(features, weather_source="open-meteo")
+        return manager.predict(features, weather_source=observation.weather.source or "unknown")
 
     if request.features is not None:
         return manager.predict(request.features.model_dump(by_alias=False), weather_source="unknown")

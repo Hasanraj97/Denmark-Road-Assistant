@@ -22,6 +22,9 @@ public record PredictionResponseDto(
         Map<String, Double> classProbabilities,
         RouteFeaturesDto features,
         boolean syntheticPrediction,
-        String disclaimer
+        String disclaimer,
+        // Factors that make the predicted grade LESS likely. May be null if an
+        // older ML service is running.
+        List<FeatureInfluenceDto> counterFeatures
 ) {
 }

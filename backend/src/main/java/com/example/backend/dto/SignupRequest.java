@@ -12,10 +12,10 @@ public record SignupRequest(
         @Email(message = "Email must be valid")
         @Size(max = 180, message = "Email is too long")
         String email,
-        @NotBlank(message = "Phone is required")
+        // Optional: the app does not need a phone number to analyse trips.
         @Size(max = 40, message = "Phone is too long")
         String phone,
-        @NotBlank(message = "Address is required")
+        // Optional: the app does not need an address to analyse trips.
         @Size(max = 255, message = "Address is too long")
         String address,
         @NotBlank(message = "Password is required")

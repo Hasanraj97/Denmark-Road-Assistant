@@ -18,6 +18,17 @@ import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 @Service
 public class OsrmRoutingService {
 
+    /**
+     * The public OSRM demo server. OSRM_BASE_URL can point the app at another
+     * server (or a local recording proxy used for repeatable tests).
+     */
+    static final String OSRM_BASE_URL = envOr("OSRM_BASE_URL", "https://router.project-osrm.org/route/v1/driving/");
+
+    private static String envOr(String name, String fallback) {
+        String value = System.getenv(name);
+        return value == null || value.isBlank() ? fallback : value;
+    }
+
     private final RestClient restClient;
 
     public OsrmRoutingService(RestClient.Builder builder) {
@@ -30,7 +41,7 @@ public class OsrmRoutingService {
         String coordinates = origin.longitude() + "," + origin.latitude() + ";" +
                 destination.longitude() + "," + destination.latitude();
         URI routeUri = URI.create(
-                "https://router.project-osrm.org/route/v1/driving/" + coordinates +
+                OSRM_BASE_URL + coordinates +
                         // steps=true adds the turn-by-turn manoeuvres. Without it OSRM returns
                         // only the shape of the route, which is enough to draw but not
                         // enough to guide anyone along it.

@@ -21,7 +21,9 @@ ML_PORT=8000
 BACKEND_PORT=8080
 FRONTEND_PORT=4200
 
-PIDS=()
+PIDS=()    # one entry per started service, in the same order as NAMES and LOGS
+NAMES=()
+LOGS=()
 
 # --- pretty output ---------------------------------------------------------
 if [ -t 1 ]; then
@@ -37,6 +39,9 @@ die()  { printf "%s\n" "  ${RED}XX${OFF}  $*" >&2; exit 1; }
 
 # --- shutdown --------------------------------------------------------------
 cleanup() {
+  # A check failed before anything was started: nothing to stop, and saying
+  # "Shutting down..." would only be confusing.
+  [ -z "${PIDS[*]:-}" ] && return
   printf "\n%s\n" "${BOLD}Shutting down...${OFF}"
   for pid in "${PIDS[@]:-}"; do
     if [ -n "${pid:-}" ] && kill -0 "$pid" 2>/dev/null; then
@@ -53,7 +58,10 @@ cleanup() {
   sleep 1
   printf "%s\n" "Stopped. Logs are in ${DIM}logs/${OFF}"
 }
-trap cleanup EXIT INT TERM
+# Ctrl+C only EXITS; the EXIT trap then does the cleanup, exactly once. With
+# cleanup trapped on INT as well, it ran on the signal and then again on exit.
+trap cleanup EXIT
+trap 'exit 130' INT TERM
 
 # --- helpers ---------------------------------------------------------------
 port_in_use() {
@@ -83,11 +91,25 @@ require_port_free() {
   fi
 }
 
+# Remember a service that was just started in the background, so it can be
+# watched while it runs and stopped at the end.
+track() { PIDS+=("$1"); NAMES+=("$2"); LOGS+=("$3"); }
+
 wait_for_http() {
-  local url="$1" name="$2" seconds="${3:-90}" logfile="$4"
-  local waited=0
+  local url="$1" name="$2" seconds="${3:-90}" logfile="$4" pid="${5:-}"
+  local waited=0 code
   printf "  ..  waiting for %s" "$name"
   while [ "$waited" -lt "$seconds" ]; do
+    # If it has already died there is nothing to wait for. Without this, a
+    # service that crashed in its first second still cost the full timeout.
+    if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
+      wait "$pid" 2>/dev/null; code=$?
+      printf "\n"
+      printf "%s\n" "  ${RED}XX${OFF}  $name stopped before it was ready (exit code $code)." >&2
+      printf "%s\n" "      Last 25 lines of $logfile:" >&2
+      tail -25 "$logfile" >&2
+      exit 1
+    fi
     if curl -sf --max-time 3 "$url" >/dev/null 2>&1; then
       printf "\r"; ok "$name is up  ${DIM}($url)${OFF}    "
       return 0
@@ -109,9 +131,37 @@ if [ -x "$ROOT/ml-service/.venv/Scripts/python.exe" ]; then
 elif [ -x "$ROOT/ml-service/.venv/bin/python" ]; then
   VENV_PY="$ROOT/ml-service/.venv/bin/python"              # macOS / Linux layout
 else
-  die "No Python virtual environment found at ml-service/.venv
-      Create it first (see README section 2):
-        cd ml-service && py -3.12 -m venv .venv && ./.venv/Scripts/python.exe -m pip install -r requirements.txt"
+  die "No usable Python virtual environment found at ml-service/.venv
+      Create it once (any Python 3.11 to 3.14 works - see README section 2):
+        cd ml-service && rm -rf .venv
+        py -3.14 -m venv .venv && ./.venv/Scripts/python.exe -m pip install -r requirements.txt
+      On macOS / Linux:
+        python3 -m venv .venv && ./.venv/bin/python -m pip install -r requirements.txt"
+fi
+
+# Actually RUN it. A virtual environment is only a thin layer over the Python
+# that created it: if that Python is uninstalled or upgraded, .venv/ is still
+# there - so the -x test above passes - but it can no longer start. That is what
+# happened when Python 3.12 was removed from the development machine.
+if ! PY_CHECK="$("$VENV_PY" -c 'import fastapi, uvicorn, sklearn, pandas, numpy, joblib' 2>&1)"; then
+  printf "%s\n" "  ${RED}XX${OFF}  The Python environment in ml-service/.venv cannot run." >&2
+  case "$PY_CHECK" in
+    # "No Python at" from an environment made by Python 3.12 or older,
+    # "did not find executable at" from one made by 3.13 or newer.
+    *"No Python at"*|*"did not find executable at"*)
+      printf "%s\n" "      It was built with a version of Python that is no longer installed" \
+                    "      on this computer (for example it was uninstalled or upgraded)." \
+                    "      An environment cannot be repaired after that - rebuild it:" >&2 ;;
+    *)
+      printf "%s\n" "      Its packages may be missing or damaged. Rebuild it:" >&2 ;;
+  esac
+  printf "%s\n" "        cd ml-service && rm -rf .venv" \
+                "        py -3.14 -m venv .venv && ./.venv/Scripts/python.exe -m pip install -r requirements.txt" \
+                "      (any Python 3.11 to 3.14 works; on macOS / Linux use python3 and .venv/bin/python)" \
+                "" \
+                "      Python said:" >&2
+  printf "%s\n" "$PY_CHECK" | tr -d '\r' | tail -4 | sed 's/^/        /' >&2
+  exit 1
 fi
 
 [ -d "$ROOT/frontend/node_modules" ] || die "frontend/node_modules is missing. Run:  cd frontend && npm ci"
@@ -127,27 +177,34 @@ require_port_free "$FRONTEND_PORT" "the frontend"
 
 # --- 1. ML service ---------------------------------------------------------
 say "1/3  ML service (port $ML_PORT)"
-printf "%s\n" "     ${DIM}first start trains the model - this takes a few seconds${OFF}"
+# Training is a deliberate step: the service only trains on start-up when
+# ML_BOOTSTRAP_TRAINING=1, which is set here only when no model exists yet.
+if [ -f "$ROOT/ml-service/models/road_condition_model.joblib" ]; then
+  export ML_BOOTSTRAP_TRAINING=0
+else
+  export ML_BOOTSTRAP_TRAINING=1
+  printf "%s\n" "     ${DIM}no model yet: training the first one (one-time setup)${OFF}"
+fi
 ( cd "$ROOT/ml-service" && exec "$VENV_PY" -m uvicorn app.main:app --host 127.0.0.1 --port "$ML_PORT" ) \
   > "$LOG_DIR/ml-service.log" 2>&1 &
-PIDS+=($!)
-wait_for_http "http://127.0.0.1:$ML_PORT/health" "ML service" 120 "$LOG_DIR/ml-service.log"
+track $! "ML service" "$LOG_DIR/ml-service.log"
+wait_for_http "http://127.0.0.1:$ML_PORT/health" "ML service" 120 "$LOG_DIR/ml-service.log" $!
 
 # --- 2. Backend ------------------------------------------------------------
 say "2/3  Backend (port $BACKEND_PORT)"
 ( cd "$ROOT/backend" && exec ./mvnw -q spring-boot:run ) > "$LOG_DIR/backend.log" 2>&1 &
-PIDS+=($!)
-wait_for_http "http://127.0.0.1:$BACKEND_PORT/api/health" "Backend" 180 "$LOG_DIR/backend.log"
+track $! "Backend" "$LOG_DIR/backend.log"
+wait_for_http "http://127.0.0.1:$BACKEND_PORT/api/health" "Backend" 180 "$LOG_DIR/backend.log" $!
 
 # --- 3. Frontend -----------------------------------------------------------
 say "3/3  Frontend (port $FRONTEND_PORT)"
 ( cd "$ROOT/frontend" && exec npm start ) > "$LOG_DIR/frontend.log" 2>&1 &
-PIDS+=($!)
+track $! "Frontend" "$LOG_DIR/frontend.log"
 # NOTE: localhost, not 127.0.0.1. The Angular dev server binds to IPv6 only
 # ([::1]:4200), so an IPv4 health check never succeeds even though the server
 # is up and serving. The ML service and backend bind IPv4, so they keep
 # 127.0.0.1 and avoid a pointless IPv6 attempt first.
-wait_for_http "http://localhost:$FRONTEND_PORT" "Frontend" 180 "$LOG_DIR/frontend.log"
+wait_for_http "http://localhost:$FRONTEND_PORT" "Frontend" 180 "$LOG_DIR/frontend.log" $!
 
 say ""
 say "All three services are running."
@@ -159,5 +216,19 @@ printf "%s\n" ""
 printf "%s\n" "    Press ${BOLD}Ctrl+C${OFF} to stop everything."
 printf "%s\n" ""
 
-# Wait until interrupted.
-wait
+# Wait until interrupted, or until one of the services dies. A bare "wait"
+# waited for ALL of them, so a single crash went unnoticed.
+while :; do
+  sleep 2
+  i=0
+  while [ "$i" -lt "${#PIDS[@]}" ]; do
+    if ! kill -0 "${PIDS[$i]}" 2>/dev/null; then
+      wait "${PIDS[$i]}" 2>/dev/null; code=$?
+      printf "%s\n" "  ${RED}XX${OFF}  ${NAMES[$i]} exited unexpectedly (exit code $code)." >&2
+      printf "%s\n" "      Last 25 lines of ${LOGS[$i]}:" >&2
+      tail -25 "${LOGS[$i]}" >&2
+      exit 1
+    fi
+    i=$((i + 1))
+  done
+done

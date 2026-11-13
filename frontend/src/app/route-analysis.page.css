@@ -555,17 +555,17 @@ p {
 
 .condition-pill.good {
   background: #4ade80;
-  color: white;
+  color: #0b111c;
 }
 
 .condition-pill.moderate {
   background: #fbbf24;
-  color: white;
+  color: #0b111c;
 }
 
 .condition-pill.poor {
   background: #fb7185;
-  color: white;
+  color: #0b111c;
 }
 
 .condition-pill.very-poor {
@@ -680,8 +680,30 @@ p {
   max-width: 100%;
 }
 
+/* The explanation is the point of the app, so it is shown in full instead of
+   inside a small scrolling box (the review found the top factors hidden). */
 .compact-inputs-list {
-  max-height: 252px;
+  max-height: none;
+  overflow: visible;
+}
+
+.inputs-subhead {
+  margin: 6px 0 0;
+  color: #b4c3d8;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.counter-item {
+  border-style: dashed;
+}
+
+.inputs-list:focus-visible,
+.nav-steps:focus-visible {
+  outline: 2px solid #33d6c0;
+  outline-offset: 2px;
 }
 
 .input-item {
@@ -725,7 +747,7 @@ p {
   border-radius: 999px;
   border: 1px dashed rgba(51, 214, 192, 0.5);
   background: rgba(232, 243, 255, 0.8);
-  color: #12a897;
+  color: #08463f;
   font-size: 0.86rem;
   font-weight: 700;
 }

@@ -264,7 +264,7 @@ class RouteObservationServiceTest {
     }
 
     @Test
-    @DisplayName("the weather is sampled at the midpoint of the route, at the departure hour")
+    @DisplayName("on a short straight route the weather point is the middle, at the departure hour")
     void weatherIsSampledAtTheMidpoint() {
         when(weatherService.forecastFor(anyDouble(), anyDouble(), any())).thenReturn(reading());
 
@@ -287,6 +287,33 @@ class RouteObservationServiceTest {
 
         assertThat(observation.weather()).isEqualTo(reading());
         assertThat(observation.departureIso()).isEqualTo(departure.getValue().toString());
+    }
+
+    @Test
+    @DisplayName("the weather point lies halfway ALONG the driven line, at the hour the driver gets there")
+    void weatherIsSampledHalfwayAlongTheRouteAtThePassingTime() {
+        when(weatherService.forecastFor(anyDouble(), anyDouble(), any())).thenReturn(reading());
+
+        // An L-shaped route: 1 degree east along latitude 55, then 1 degree north.
+        // The east leg is about 63.8 km and the north leg about 111.2 km, so the
+        // halfway point (about 87.5 km) lies about 23.7 km up the north leg.
+        GeocodedLocation a = place("A", 55.0, 10.0, 0.5);
+        GeocodedLocation c = place("C", 56.0, 11.0, 0.5);
+        RouteComputation route = new RouteComputation(a, c, 175.0, 150.0,
+                List.of(new RoutePointDto(55.0, 10.0), new RoutePointDto(55.0, 11.0), new RoutePointDto(56.0, 11.0)),
+                List.of());
+
+        service.observe(route, null, "08:00");
+
+        ArgumentCaptor<Double> lat = ArgumentCaptor.forClass(Double.class);
+        ArgumentCaptor<Double> lng = ArgumentCaptor.forClass(Double.class);
+        ArgumentCaptor<LocalDateTime> time = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(weatherService).forecastFor(lat.capture(), lng.capture(), time.capture());
+
+        assertThat(lng.getValue()).isEqualTo(11.0, within(1e-9));
+        assertThat(lat.getValue()).isEqualTo(55.213, within(0.01));
+        // 08:00 plus half of 150 minutes is 09:15, which rounds to 09:00.
+        assertThat(time.getValue().getHour()).isEqualTo(9);
     }
 
     @Test

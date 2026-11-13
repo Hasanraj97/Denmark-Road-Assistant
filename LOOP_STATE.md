@@ -52,6 +52,12 @@ Or three terminals — see README §3.
 pandas 2.3.2, which publish no `cp314` wheels; a 3.14 venv would compile from
 source and fail. Documented in the README.
 
+*Superseded 2026-10-28.* Python 3.12 was later removed from the development
+machine, which left `ml-service/.venv` unable to start (last entry in
+`FIX_LOG.md`). The pins moved to scikit-learn 1.7.2 / numpy 2.3.5 /
+pandas 2.3.3 / joblib 1.5.3, which ship ready-made 3.14 packages, and the venv
+was rebuilt on 3.14.
+
 **D2 — Android configuration-only.** No SDK, so Phase 7 repaired configuration
 and wrote instructions. No APK was built. The one Android command that *could*
 run here without an SDK (`npx cap sync`) was not run either, because it rewrites

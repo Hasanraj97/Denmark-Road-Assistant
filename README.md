@@ -77,16 +77,17 @@ setup), or **MySQL** if you prefer — see §6.
 |---|---|---|---|
 | **Java JDK** | 17 or newer | `java -version` | Developed and verified on JDK 25. Maven itself is not needed — the project ships a wrapper. |
 | **Node.js** | 20.19+, 22.12+ or 24+ | `node -v` | Angular 21 will refuse to build on anything older. |
-| **Python** | 3.10 – 3.13 | `python --version` | **Not 3.14 yet** — see the warning below. |
+| **Python** | 3.11 – 3.14 | `python --version` | Any of those four — see the note below. |
 | **Git** | any recent | `git --version` | |
 | Android Studio | Ladybug or newer | — | **Only** if you want to build the mobile app. Everything else works without it. |
 
-> **Python version warning.** `ml-service/requirements.txt` pins
-> scikit-learn 1.7.1, numpy 2.3.2 and pandas 2.3.2. Those releases do not publish
-> pre-built packages for Python 3.14, so a 3.14 environment tries to compile them
-> from source and fails unless you have a full C/C++ toolchain. Use 3.12 (or any
-> 3.10–3.13). If you have several Pythons on Windows, `py -0p` lists them and
-> `py -3.12` selects one.
+> **Python versions.** `ml-service/requirements.txt` pins scikit-learn 1.7.2,
+> numpy 2.3.5, pandas 2.3.3 and joblib 1.5.3. Each of those publishes ready-made
+> packages for Python 3.11, 3.12, 3.13 and 3.14, so nothing is compiled from
+> source. A Python outside that range has no ready-made packages for these
+> versions, so `pip install` tries to compile numpy from source and fails unless
+> you have a full C/C++ toolchain. If you have several Pythons on Windows,
+> `py -0p` lists them and `py -3.14` (or `-3.13`, `-3.12`, `-3.11`) selects one.
 
 No API keys are needed. Nominatim, OSRM and Open-Meteo are all free and open, and
 the app is a polite user of them.
@@ -100,15 +101,24 @@ From the project root, once.
 **a. The ML service** — creates an isolated Python environment:
 
 ```bash
-cd ml-service && py -3.12 -m venv .venv && ./.venv/Scripts/python.exe -m pip install -r requirements.txt
+cd ml-service && py -3.14 -m venv .venv && ./.venv/Scripts/python.exe -m pip install -r requirements.txt
 ```
+
+`-3.14` picks Python 3.14. Use `-3.13`, `-3.12` or `-3.11` instead if that is
+the one `py -0p` shows you have.
 
 On macOS or Linux the venv layout differs — use `.venv/bin/python` instead of
-`.venv/Scripts/python.exe` everywhere in this README:
+`.venv/Scripts/python.exe` everywhere in this README. Check that
+`python3 --version` is 3.11 – 3.14 first:
 
 ```bash
-cd ml-service && python3.12 -m venv .venv && ./.venv/bin/python -m pip install -r requirements.txt
+cd ml-service && python3 -m venv .venv && ./.venv/bin/python -m pip install -r requirements.txt
 ```
+
+The environment is tied to the Python that created it. If you later uninstall
+or upgrade that Python, the `.venv` folder stays but can no longer start — the
+start scripts detect this and tell you; the cure is to delete `.venv` and run
+the command above again (§9).
 
 **b. The frontend** — installs the Angular dependencies:
 
@@ -135,9 +145,13 @@ On Windows, from PowerShell or File Explorer:
 .\start-all.ps1
 ```
 
-The script starts all three services in the right order, waits for each to
-become healthy before starting the next, tells you clearly if a port is already
-in use, and shuts everything down cleanly when you press **Ctrl+C**.
+The script checks that the ML service's Python environment can actually run,
+starts all three services in the right order, waits for each to become healthy
+before starting the next, tells you clearly if a port is already in use, and
+shuts everything down cleanly when you press **Ctrl+C**. If a service crashes
+while starting, it stops at once and prints the end of that service's log
+instead of waiting out the timeout. Each service writes `logs/<name>.log` and
+`logs/<name>.err.log` — Python and uvicorn write to the second one.
 
 Then open **http://localhost:4200**.
 
@@ -145,11 +159,13 @@ Then open **http://localhost:4200**.
 
 Useful when you want to watch one service's logs.
 
-**Terminal 1 — ML service** (port 8000). The first start trains the model, which
-takes a few seconds and prints its accuracy:
+**Terminal 1 — ML service** (port 8000). It refuses to start without a model
+file, so that a missing file never silently becomes a different model. On a
+fresh clone, allow the first training once with `ML_BOOTSTRAP_TRAINING=1`
+(the start-all scripts do this for you when the model is missing):
 
 ```bash
-cd ml-service && ./.venv/Scripts/python.exe -m uvicorn app.main:app --port 8000
+cd ml-service && ML_BOOTSTRAP_TRAINING=1 ./.venv/Scripts/python.exe -m uvicorn app.main:app --port 8000
 ```
 
 **Terminal 2 — backend** (port 8080):
@@ -213,19 +229,25 @@ cd frontend && npm run build
 
 ## 5. Retraining the model
 
-The model regenerates itself if `ml-service/models/` is empty. To force a fresh
+The ML service checks the model file against the SHA-256 checksum stored in its
+metadata when it starts, and refuses to run if they differ. It only trains a
+new model on start-up when `ML_BOOTSTRAP_TRAINING=1` is set. To force a fresh
 one:
 
 ```bash
 cd ml-service && rm -f models/road_condition_model.joblib models/road_condition_model_metadata.json data/synthetic_denmark_routes.csv
 ```
 
-then restart the ML service. Training takes about 5 seconds and prints a full
-classification report.
+then restart the ML service with `ML_BOOTSTRAP_TRAINING=1`. Training takes
+about 5 seconds and prints a full classification report.
 
-There is also `POST /api/retrain-model`, but **it requires you to be logged in**.
-It regenerates 12 000 rows and refits the forest, overwriting the files on disk,
-so it is deliberately not something an anonymous visitor can trigger.
+There is also `POST /api/retrain-model`, but **only an administrator can use
+it**: the signed-in user's email must be listed in `ADMIN_EMAILS`. Everyone
+else gets 403. A second retrain within `RETRAIN_MIN_INTERVAL_SECONDS` (600 by
+default) gets 429, and every attempt is written to the backend log as an
+`AUDIT` line. Before replacing the model the ML service keeps the old one as
+`road_condition_model.joblib.previous` (with its metadata), so a bad retrain
+can be rolled back by copying those two files back.
 
 Neither the dataset nor the model file is committed to Git — they are build
 outputs, and the model was 82 MB before this was fixed. Both are reproducible
@@ -286,6 +308,12 @@ default except the JWT secret, which is explained below.
 | `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | `sa` / *(empty)* | Database credentials |
 | `SPRING_JPA_HIBERNATE_DDL_AUTO` | `update` | Schema handling |
 | `WEATHER_BASE_URL` | Open-Meteo forecast API | Weather source |
+| `NOMINATIM_SEARCH_URL` | public Nominatim search | Geocoder (cached for 24 h, at most one request a second) |
+| `OSRM_BASE_URL` | public OSRM demo server | Router |
+| `TRAFFIC_EVENTS_URL` | Vejdirektoratet feed | Roadworks and incidents |
+| `ADMIN_EMAILS` | *(none)* | Comma-separated emails allowed to retrain the model |
+| `RETRAIN_MIN_INTERVAL_SECONDS` | `600` | Minimum time between two retrains |
+| `ML_BOOTSTRAP_TRAINING` | `0` | ML service only: allow training on start-up when no model exists |
 
 ### About `APP_JWT_SECRET`
 
@@ -411,7 +439,19 @@ instead of silently appearing to still be logged in.
 Angular 21 needs Node 20.19+, 22.12+ or 24+. Check with `node -v`.
 
 **`pip install` fails building numpy, pandas or scikit-learn from source**
-You are on Python 3.14. Use 3.12 — see §1.
+Your Python is outside 3.11 – 3.14 — most often a newer release than the pinned
+packages ship ready-made builds for. Create the environment with a supported
+one instead (`py -0p` lists what you have) — see §1 and §2.
+
+**`The Python environment in ml-service\.venv cannot run.`**, or an ML service
+log that says **`No Python at '…\python.exe'`** or **`did not find executable at`**
+The environment was made by a Python that has since been uninstalled or
+upgraded. A virtual environment is only a thin layer over the Python that
+created it, so it cannot be repaired — delete `ml-service/.venv` and create it
+again with the command in §2. This is what happened when Python 3.12 was
+replaced by 3.14 on the development machine: the old start script then waited
+the full 120 seconds and showed an empty log, because the error went to
+`logs/ml-service.err.log`, which it never printed.
 
 **Port already in use**
 `start-all.sh` / `start-all.ps1` names the port and the process. To find it
@@ -472,9 +512,11 @@ is not stored.
 | POST | `/api/predict` | — | Predict from a supplied feature vector |
 | POST | `/api/route-and-predict` | optional | The main flow. Takes `selectedDepartureDate` (`yyyy-MM-dd`, today .. +6 days) and `selectedDepartureTime` (`HH:mm`). Saves to history if logged in |
 | GET | `/api/model-info` | — | Model name, accuracy, labels, feature importances |
-| POST | `/api/retrain-model` | **yes** | Regenerate the dataset and refit |
-| GET | `/api/users/me` | **yes** | Your profile |
+| POST | `/api/retrain-model` | **admin** | Regenerate the dataset and refit (403 for ordinary users, 429 if repeated too soon) |
+| GET | `/api/users/me` | **yes** | Your profile (phone and address are optional) |
 | PUT | `/api/users/me` | **yes** | Update profile — returns a **fresh token** |
+| GET | `/api/users/me/export` | **yes** | Download everything stored about you as JSON |
+| DELETE | `/api/users/me` | **yes** | Delete your account with all saved analyses and feedback |
 | GET | `/api/history` | **yes** | Your saved analyses |
 | GET | `/api/history/{id}` | **yes** | One analysis in detail |
 | DELETE | `/api/history/{id}` | **yes** | Delete one |

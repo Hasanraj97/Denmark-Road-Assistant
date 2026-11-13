@@ -127,7 +127,8 @@ public final class TestFixtures {
                 Map.of("Good", 0.11, "Moderate", 0.83, "Poor", 0.06),
                 features(),
                 true,
-                "Trained on generated data."
+                "Trained on generated data.",
+                List.of(new FeatureInfluenceDto("Distance", "38 km", "This made \"Moderate\" less likely."))
         );
     }
 

@@ -129,6 +129,17 @@ public class RouteHistoryService {
         historyRepository.delete(history);
     }
 
+    /** Deletes every saved analysis of this user, with its feedback. Returns how many. */
+    @Transactional
+    public int deleteAllForUser(AppUser user) {
+        List<RouteAnalysisHistory> all = historyRepository.findAllByUserIdOrderByCreatedAtDesc(user.getId());
+        for (RouteAnalysisHistory history : all) {
+            feedbackRepository.deleteByHistoryId(history.getId());
+        }
+        historyRepository.deleteAll(all);
+        return all.size();
+    }
+
     @Transactional(readOnly = true)
     public RouteAnalysisHistory requireOwnedHistory(AppUser user, Long historyId) {
         return historyRepository.findByIdAndUserId(historyId, user.getId())

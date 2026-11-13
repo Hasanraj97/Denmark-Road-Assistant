@@ -9,6 +9,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
@@ -50,19 +52,65 @@ public class GeocodingService {
             Map.entry("hillerød", 0.48)
     );
 
+    /**
+     * The public Nominatim server. NOMINATIM_SEARCH_URL can point the app at
+     * another server (or a local recording proxy used for repeatable tests).
+     */
+    static final String NOMINATIM_SEARCH_URL = envOr("NOMINATIM_SEARCH_URL", "https://nominatim.openstreetmap.org/search");
+
+    private static String envOr(String name, String fallback) {
+        String value = System.getenv(name);
+        return value == null || value.isBlank() ? fallback : value;
+    }
+
+    /** Nominatim's usage policy allows at most one request per second. */
+    static final long DEFAULT_MIN_INTERVAL_MILLIS = 1000;
+    private static final long CACHE_TTL_MILLIS = 24L * 60 * 60 * 1000;
+    private static final int CACHE_MAX_ENTRIES = 500;
+
+    private record CachedLocation(GeocodedLocation location, long storedAt) {
+    }
+
     private final RestClient restClient;
     private final AppProperties appProperties;
 
+    /**
+     * Recently resolved places. The same towns are looked up again and again
+     * (every analysis geocodes two places), so caching them for a day takes most
+     * of the load off the public Nominatim server. Oldest entries drop out first.
+     */
+    private final Map<String, CachedLocation> cache = Collections.synchronizedMap(
+            new LinkedHashMap<String, CachedLocation>(64, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, CachedLocation> eldest) {
+                    return size() > CACHE_MAX_ENTRIES;
+                }
+            });
+
+    private final Object throttleLock = new Object();
+    private long lastRequestAt;
+    long minIntervalMillis = DEFAULT_MIN_INTERVAL_MILLIS;
+
     public GeocodingService(RestClient.Builder builder, AppProperties appProperties) {
         this.restClient = builder
-                .defaultHeader(HttpHeaders.USER_AGENT, "denmark-road-condition-assistant/1.0")
+                // Nominatim asks every application to identify itself.
+                .defaultHeader(HttpHeaders.USER_AGENT,
+                        "denmark-road-condition-assistant/1.0 (student project; github.com/Hasanraj97/denmark-road-assistant)")
                 .build();
         this.appProperties = appProperties;
     }
 
     public GeocodedLocation geocode(String query) {
+        String key = query == null ? "" : query.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+        CachedLocation cached = cache.get(key);
+        if (cached != null && System.currentTimeMillis() - cached.storedAt() < CACHE_TTL_MILLIS) {
+            return cached.location();
+        }
+
+        waitForTurn();
+
         URI searchUri = UriComponentsBuilder
-                .fromUriString("https://nominatim.openstreetmap.org/search")
+                .fromUriString(NOMINATIM_SEARCH_URL)
                 .queryParam("q", query)
                 .queryParam("format", "jsonv2")
                 .queryParam("limit", 1)
@@ -90,12 +138,33 @@ public class GeocodingService {
         JsonNode first = results[0];
         String displayName = first.path("display_name").asText(query);
 
-        return new GeocodedLocation(
+        GeocodedLocation location = new GeocodedLocation(
                 displayName,
                 first.path("lat").asDouble(),
                 first.path("lon").asDouble(),
                 urbanScoreFor(displayName, first)
         );
+        cache.put(key, new CachedLocation(location, System.currentTimeMillis()));
+        return location;
+    }
+
+    /**
+     * Blocks until at least {@link #minIntervalMillis} has passed since the last
+     * request to Nominatim, so the app never sends more than one per second, even
+     * when several users analyse routes at the same moment.
+     */
+    private void waitForTurn() {
+        synchronized (throttleLock) {
+            long wait = lastRequestAt + minIntervalMillis - System.currentTimeMillis();
+            if (wait > 0) {
+                try {
+                    Thread.sleep(wait);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            lastRequestAt = System.currentTimeMillis();
+        }
     }
 
     /**

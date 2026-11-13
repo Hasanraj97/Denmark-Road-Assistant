@@ -12,6 +12,7 @@ import com.example.backend.routing.GeocodingService;
 import com.example.backend.routing.OsrmRoutingService;
 import com.example.backend.routing.RouteObservationService;
 import com.example.backend.traffic.TrafficEventService;
+import com.example.backend.service.ModelAdminService;
 import com.example.backend.service.RouteHistoryService;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -38,12 +39,20 @@ public class RouteAnalysisController {
                     + "grade comes from a model trained on generated data, so treat it as an "
                     + "illustration of the method rather than a measurement of Danish roads.";
 
+    /** Used instead when Open-Meteo could not be reached and a seasonal average stood in. */
+    private static final String FALLBACK_DISCLAIMER =
+            "Live weather was not available for this request, so a seasonal average was used and the "
+                    + "grade is less reliable than usual. The road-condition grade comes from a model "
+                    + "trained on generated data, so treat it as an illustration of the method rather "
+                    + "than a measurement of Danish roads.";
+
     private final GeocodingService geocodingService;
     private final OsrmRoutingService routingService;
     private final RouteObservationService routeObservationService;
     private final MlServiceClient mlServiceClient;
     private final RouteHistoryService routeHistoryService;
     private final TrafficEventService trafficEventService;
+    private final ModelAdminService modelAdminService;
 
     public RouteAnalysisController(
             GeocodingService geocodingService,
@@ -51,13 +60,15 @@ public class RouteAnalysisController {
             RouteObservationService routeObservationService,
             MlServiceClient mlServiceClient,
             RouteHistoryService routeHistoryService,
-            TrafficEventService trafficEventService
+            TrafficEventService trafficEventService,
+            ModelAdminService modelAdminService
     ) {
         this.geocodingService = geocodingService;
         this.routingService = routingService;
         this.routeObservationService = routeObservationService;
         this.mlServiceClient = mlServiceClient;
         this.routeHistoryService = routeHistoryService;
+        this.modelAdminService = modelAdminService;
         this.trafficEventService = trafficEventService;
     }
 
@@ -116,7 +127,7 @@ public class RouteAnalysisController {
                 incidents,
                 historyId,
                 true,
-                DISCLAIMER
+                observation.weather() != null && observation.weather().isLive() ? DISCLAIMER : FALLBACK_DISCLAIMER
         );
     }
 
@@ -125,8 +136,12 @@ public class RouteAnalysisController {
         return mlServiceClient.getModelInfo();
     }
 
+    /**
+     * Retraining replaces the shared model, so only an administrator may do it
+     * (see {@link ModelAdminService}); everyone else gets 403.
+     */
     @PostMapping("/retrain-model")
-    public ModelInfoDto retrainModel() {
-        return mlServiceClient.retrain();
+    public ModelInfoDto retrainModel(@AuthenticationPrincipal AppUser user) {
+        return modelAdminService.retrain(user);
     }
 }

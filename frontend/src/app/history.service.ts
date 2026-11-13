@@ -60,6 +60,12 @@ export class HistoryService {
     );
   }
 
+  deleteHistory(id: number): Observable<void> {
+    return from(this.backendUrl.ensureConnected()).pipe(
+      switchMap(() => this.http.delete<void>(this.backendUrl.apiUrl(`/history/${id}`)))
+    );
+  }
+
   getFeedback(historyId: number): Observable<FeedbackResponse> {
     return from(this.backendUrl.ensureConnected()).pipe(
       switchMap(() => this.http.get<FeedbackResponse>(this.backendUrl.apiUrl(`/history/${historyId}/feedback`)))

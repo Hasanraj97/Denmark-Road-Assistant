@@ -82,13 +82,13 @@ p {
 }
 
 .profile-message.error {
-  background: rgba(251, 113, 133, 0.82);
-  color: #fb7185;
+  background: rgba(127, 29, 29, 0.9);
+  color: #fecaca;
 }
 
 .profile-message.success {
-  background: rgba(225, 248, 232, 0.82);
-  color: #22a35c;
+  background: rgba(20, 83, 45, 0.9);
+  color: #bbf7d0;
 }
 
 .profile-form {
@@ -146,4 +146,59 @@ p {
   .profile-form {
     grid-template-columns: 1fr;
   }
+}
+
+/* Your data: download and delete (added after the review) */
+.profile-privacy {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(150, 185, 230, 0.12);
+}
+
+.profile-privacy h2 {
+  margin: 0 0 8px;
+  color: #e9f0fa;
+  font-size: 1.15rem;
+}
+
+.profile-privacy p {
+  margin: 0 0 14px;
+  color: #b4c3d8;
+}
+
+.privacy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.privacy-actions button {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.privacy-actions .secondary {
+  border: 1px solid rgba(150, 185, 230, 0.35);
+  background: transparent;
+  color: #e9f0fa;
+}
+
+.privacy-actions .danger {
+  border: none;
+  background: #b42318;
+  color: #ffffff;
+}
+
+.privacy-actions button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.confirm-text {
+  color: #fecaca;
+  font-weight: 600;
 }

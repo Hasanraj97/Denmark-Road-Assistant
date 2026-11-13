@@ -921,3 +921,73 @@ services up and reports each as healthy, and a live analysis
 real 11.8 C Open-Meteo forecast, and 2 reported incidents.
 
 *Files:* `start-all.ps1`
+
+### The ML service "did not become healthy" - and the log was empty
+
+**What you saw.** `.\start-all.ps1` printed a row of dots for two minutes, then:
+
+```
+  XX  ML service did not become healthy within 120 seconds.
+      Last 25 lines of logs\ml-service.log :
+
+Shutting down...
+```
+
+with nothing at all under the heading.
+
+**Why.** Two problems, the second hiding the first.
+
+1. *The real fault.* `ml-service\.venv` had been created with Python 3.12
+   (decision D1 in `LOOP_STATE.md`). Python 3.12 was later removed from the
+   machine, leaving only 3.14. A virtual environment is not self-contained: its
+   `python.exe` is a small launcher that starts the Python it was made from. So
+   the folder was still there, but every launch failed in under a second with
+
+   ```
+   No Python at '"C:\Users\<you>\AppData\Local\Python\pythoncore-3.12-64\python.exe'
+   ```
+
+2. *Why you never saw that.* The script only checked that
+   `.venv\Scripts\python.exe` **existed**, which it did. It then polled
+   `/health` for the full 120 seconds without noticing that the process had
+   already died. When it gave up it printed `logs\ml-service.log` - standard
+   output - but Python writes its errors to standard **error**, which goes to
+   `logs\ml-service.err.log`. The one line that explained everything was in a
+   file the script never showed.
+
+**Fix.**
+
+* `ml-service/requirements.txt` moves to patch releases that ship ready-made
+  Python 3.14 packages (scikit-learn 1.7.2, numpy 2.3.5, pandas 2.3.3,
+  joblib 1.5.3), and the environment was rebuilt on 3.14. The retrained model is
+  unchanged: the regenerated dataset and the model metadata are byte-identical to
+  the committed files (accuracy 0.8546, as in `MODEL_EVALUATION.md`).
+* `start-all.ps1` now **runs** the environment before starting anything - it
+  imports fastapi, uvicorn, sklearn, pandas, numpy and joblib - and if that
+  fails it says why in plain words ("built with a version of Python that is no
+  longer installed" for this case), prints the exact commands to rebuild it, and
+  shows the last lines Python printed.
+* While waiting for a service it checks whether the process has already exited,
+  and if so stops at once with the exit code instead of sitting out the timeout.
+* Every failure prints both `<name>.err.log` and `<name>.log`.
+* If a service dies **after** start-up, the script names it and shows its exit
+  code and log, instead of "A service exited unexpectedly (pid 1234)".
+* A check that fails before anything has started no longer prints a misleading
+  "Shutting down...".
+* `start-all.sh` got the same checks. Two of its own bugs were fixed on the
+  way: Ctrl+C printed "Shutting down..." twice (cleanup was trapped on both INT
+  and EXIT), and the final bare `wait` meant a service that crashed after
+  start-up went unnoticed.
+* The README said "Python 3.10 - 3.13, not 3.14 - use 3.12". That had become
+  backwards: 3.12 was the version that had gone, and 3.10 could never install
+  numpy 2.3. It now says 3.11 - 3.14 and `py -3.14`, explains that a venv is tied
+  to the Python that made it, and §9 has an entry for exactly this error.
+
+**Verified** by running it, not reading it: the rebuilt environment imports
+everything and the ML service answers `/health` (`modelLoaded: True`) about
+three seconds after launch; `.\start-all.ps1` brings all three services up; and
+a live Vejle to Aarhus analysis returns 71.2 km, 16 turn instructions, a
+Moderate grade on a real 6.7 C Open-Meteo forecast.
+
+*Files:* `start-all.ps1`, `start-all.sh`, `ml-service/requirements.txt`,
+`README.md`, `LOOP_STATE.md`

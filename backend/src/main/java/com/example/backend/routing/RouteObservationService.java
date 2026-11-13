@@ -1,6 +1,7 @@
 package com.example.backend.routing;
 
 import com.example.backend.dto.RouteObservationDto;
+import com.example.backend.dto.RoutePointDto;
 import com.example.backend.dto.WeatherReadingDto;
 import com.example.backend.weather.WeatherService;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
@@ -67,11 +69,14 @@ public class RouteObservationService {
                                        String selectedDepartureTime) {
         LocalDateTime departure = resolveDeparture(selectedDepartureDate, selectedDepartureTime);
 
-        // The midpoint is a better single weather sample than either endpoint for
-        // a trip that may cross the country.
-        double midpointLat = (route.origin().latitude() + route.destination().latitude()) / 2.0;
-        double midpointLng = (route.origin().longitude() + route.destination().longitude()) / 2.0;
-        WeatherReadingDto weather = weatherService.forecastFor(midpointLat, midpointLng, departure);
+        // One weather sample, taken where the driver will actually be halfway
+        // through the trip and at the hour they are expected to get there. The
+        // old code used the straight-line midpoint of the two end points at the
+        // departure hour, which can lie off the road (out at sea, for a trip
+        // across the Great Belt) and ignores how long a long trip takes.
+        double[] halfway = pointHalfwayAlong(route);
+        LocalDateTime passingTime = roundToHour(departure.plusSeconds(Math.round(route.durationMinutes() * 30.0)));
+        WeatherReadingDto weather = weatherService.forecastFor(halfway[0], halfway[1], passingTime);
 
         // Averaging the two endpoints, each scored separately. The old code
         // searched the two place names glued together, so an origin of Copenhagen
@@ -85,6 +90,53 @@ public class RouteObservationService {
                 round(urbanSignal),
                 weather
         );
+    }
+
+    /**
+     * The point halfway along the driven route, measured by distance along the
+     * route line. Falls back to the straight-line midpoint if there is no line.
+     */
+    static double[] pointHalfwayAlong(RouteComputation route) {
+        List<RoutePointDto> line = route.geometry();
+        if (line == null || line.size() < 2) {
+            return new double[] {
+                    (route.origin().latitude() + route.destination().latitude()) / 2.0,
+                    (route.origin().longitude() + route.destination().longitude()) / 2.0
+            };
+        }
+        double total = 0;
+        for (int i = 1; i < line.size(); i++) {
+            total += metres(line.get(i - 1), line.get(i));
+        }
+        double target = total / 2.0;
+        double walked = 0;
+        for (int i = 1; i < line.size(); i++) {
+            RoutePointDto a = line.get(i - 1);
+            RoutePointDto b = line.get(i);
+            double segment = metres(a, b);
+            if (walked + segment >= target && segment > 0) {
+                double t = (target - walked) / segment;
+                return new double[] {a.lat() + t * (b.lat() - a.lat()), a.lng() + t * (b.lng() - a.lng())};
+            }
+            walked += segment;
+        }
+        RoutePointDto last = line.get(line.size() - 1);
+        return new double[] {last.lat(), last.lng()};
+    }
+
+    private static double metres(RoutePointDto a, RoutePointDto b) {
+        double r = 6_371_000;
+        double dLat = Math.toRadians(b.lat() - a.lat());
+        double dLng = Math.toRadians(b.lng() - a.lng());
+        double h = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(a.lat())) * Math.cos(Math.toRadians(b.lat()))
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return 2 * r * Math.asin(Math.sqrt(h));
+    }
+
+    private static LocalDateTime roundToHour(LocalDateTime time) {
+        LocalDateTime hour = time.withMinute(0).withSecond(0).withNano(0);
+        return time.getMinute() >= 30 ? hour.plusHours(1) : hour;
     }
 
     /**

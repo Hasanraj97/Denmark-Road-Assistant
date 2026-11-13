@@ -48,7 +48,7 @@
       </div>
     }
 
-    <div class="weather-strip">
+    <div class="weather-strip" tabindex="0" role="region" aria-label="Hourly forecast">
       @for (hour of hours(); track hour.timeIso) {
         <article class="weather-hour" [class.weather-hour-active]="hour.isDepartureMatch">
           <span class="weather-hour-time">{{ hour.displayHour }}</span>
@@ -76,7 +76,7 @@
       @if (modelWeatherIsLive()) {
         <strong>Fed to the model: live Open-Meteo forecast</strong>
         <p>
-          The road-condition grade was computed from a real forecast at the route midpoint:
+          The road-condition grade was computed from a real forecast for the point halfway along the route, at the hour you are expected to pass it:
           {{ reading.temperatureC | number: '1.0-1' }}&deg;C, {{ reading.rainfallMm | number: '1.0-1' }} mm rain,
           {{ humidityPercent(reading.humidity) }}% humidity, {{ reading.windSpeedKmh | number: '1.0-0' }} km/h wind.
         </p>

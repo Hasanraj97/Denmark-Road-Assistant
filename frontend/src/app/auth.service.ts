@@ -8,8 +8,8 @@ export interface UserProfile {
   id: number;
   fullName: string;
   email: string;
-  phone: string;
-  address: string;
+  phone: string | null;
+  address: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -17,8 +17,8 @@ export interface UserProfile {
 export interface SignupPayload {
   fullName: string;
   email: string;
-  phone: string;
-  address: string;
+  phone: string | null;
+  address: string | null;
   password: string;
 }
 
@@ -30,8 +30,8 @@ export interface LoginPayload {
 export interface UpdateProfilePayload {
   fullName: string;
   email: string;
-  phone: string;
-  address: string;
+  phone: string | null;
+  address: string | null;
 }
 
 export interface AuthResponse {
@@ -85,6 +85,21 @@ export class AuthService {
     return from(this.backendUrl.ensureConnected()).pipe(
       switchMap(() => this.http.put<AuthResponse>(this.backendUrl.apiUrl('/users/me'), payload)),
       tap((response) => this.storeSession(response))
+    );
+  }
+
+  /** Downloads everything the app stores about the signed-in user. */
+  exportMyData(): Observable<unknown> {
+    return from(this.backendUrl.ensureConnected()).pipe(
+      switchMap(() => this.http.get<unknown>(this.backendUrl.apiUrl('/users/me/export')))
+    );
+  }
+
+  /** Deletes the account and all saved analyses, then signs out. */
+  deleteAccount(): Observable<void> {
+    return from(this.backendUrl.ensureConnected()).pipe(
+      switchMap(() => this.http.delete<void>(this.backendUrl.apiUrl('/users/me'))),
+      tap(() => this.logout(true))
     );
   }
 

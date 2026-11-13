@@ -34,8 +34,8 @@ public class AuthService {
         AppUser user = new AppUser();
         user.setFullName(request.fullName().trim());
         user.setEmail(normalizedEmail);
-        user.setPhone(request.phone().trim());
-        user.setAddress(request.address().trim());
+        user.setPhone(trimToNull(request.phone()));
+        user.setAddress(trimToNull(request.address()));
         user.setPasswordHash(passwordEncoder.encode(request.password()));
 
         AppUser savedUser = userRepository.save(user);
@@ -51,6 +51,10 @@ public class AuthService {
         }
 
         return new AuthResponse(jwtService.generateToken(user), UserResponse.from(user));
+    }
+
+    private static String trimToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private String normalizeEmail(String email) {

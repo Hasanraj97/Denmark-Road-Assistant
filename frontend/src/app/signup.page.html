@@ -24,17 +24,17 @@
         }
       </label>
       <label>
-        <span>Phone</span>
+        <span>Phone (optional)</span>
         <input type="text" formControlName="phone" placeholder="12345678" />
         @if (showError('phone')) {
-          <small class="field-error">Phone is required.</small>
+          <small class="field-error">Phone is too long.</small>
         }
       </label>
       <label>
-        <span>Address</span>
+        <span>Address (optional)</span>
         <input type="text" formControlName="address" placeholder="Roskilde, Denmark" />
         @if (showError('address')) {
-          <small class="field-error">Address is required.</small>
+          <small class="field-error">Address is too long.</small>
         }
       </label>
       <label>

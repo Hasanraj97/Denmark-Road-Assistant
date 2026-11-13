@@ -53,12 +53,12 @@
 .feedback-choice {
   padding: 0 18px;
   background: rgba(242, 247, 255, 0.9);
-  color: #e9f0fa;
+  color: #1f3550;
 }
 
 .feedback-choice.active {
   background: linear-gradient(135deg, #7dd3fc 0%, #7dd3fc 100%);
-  color: #e9f0fa;
+  color: #0b2540;
   box-shadow: 0 12px 24px rgba(72, 137, 221, 0.2);
 }
 
@@ -83,7 +83,7 @@ textarea {
   padding: 0 22px;
   justify-self: start;
   background: linear-gradient(135deg, #33d6c0 0%, #53a4ff 100%);
-  color: #f3f8ff;
+  color: #04221f;
 }
 
 .feedback-save:disabled {

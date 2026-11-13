@@ -10,15 +10,45 @@ import com.example.backend.security.JwtService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 @Service
 public class UserService {
 
     private final AppUserRepository userRepository;
     private final JwtService jwtService;
+    private final RouteHistoryService routeHistoryService;
 
-    public UserService(AppUserRepository userRepository, JwtService jwtService) {
+    public UserService(AppUserRepository userRepository, JwtService jwtService,
+                       RouteHistoryService routeHistoryService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
+        this.routeHistoryService = routeHistoryService;
+    }
+
+    /**
+     * Deletes the account and everything linked to it: every saved analysis and
+     * every piece of feedback. Nothing is kept afterwards (GDPR right to erasure).
+     */
+    @Transactional
+    public void deleteAccount(AppUser user) {
+        routeHistoryService.deleteAllForUser(user);
+        userRepository.deleteById(user.getId());
+    }
+
+    /**
+     * Everything the app stores about this user, as one JSON document
+     * (GDPR right of access and data portability). The password hash is never
+     * included.
+     */
+    public Map<String, Object> exportData(AppUser user) {
+        Map<String, Object> export = new LinkedHashMap<>();
+        export.put("exportedAt", Instant.now().toString());
+        export.put("profile", UserResponse.from(user));
+        export.put("savedAnalyses", routeHistoryService.historyForUser(user));
+        return export;
     }
 
     public UserResponse currentUser(AppUser user) {
@@ -52,8 +82,8 @@ public class UserService {
 
         user.setFullName(request.fullName().trim());
         user.setEmail(normalizedEmail);
-        user.setPhone(request.phone().trim());
-        user.setAddress(request.address().trim());
+        user.setPhone(request.phone() == null || request.phone().isBlank() ? null : request.phone().trim());
+        user.setAddress(request.address() == null || request.address().isBlank() ? null : request.address().trim());
 
         AppUser savedUser = userRepository.save(user);
         return new AuthResponse(jwtService.generateToken(savedUser), UserResponse.from(savedUser));

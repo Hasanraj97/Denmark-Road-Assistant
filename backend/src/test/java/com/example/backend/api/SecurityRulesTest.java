@@ -14,6 +14,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -62,16 +63,31 @@ class SecurityRulesTest extends AbstractApiTest {
     }
 
     @Test
-    @DisplayName("POST /api/retrain-model as a signed-in user -> 200")
-    void retrainIsAllowedForASignedInUser() throws Exception {
+    @DisplayName("POST /api/retrain-model as an ordinary signed-in user -> 403, model untouched")
+    void retrainIsRefusedForAnOrdinaryUser() throws Exception {
         AuthResponse user = signUp("trainer@example.dk");
-        when(mlServiceClient.retrain()).thenReturn(TestFixtures.modelInfo());
 
         mockMvc.perform(post("/api/retrain-model").header("Authorization", BEARER + user.token()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Only an administrator can retrain the shared model."));
+
+        verify(mlServiceClient, never()).retrain();
+    }
+
+    @Test
+    @DisplayName("POST /api/retrain-model as the administrator -> 200, then 429 if repeated at once")
+    void retrainIsAllowedForTheAdministratorButRateLimited() throws Exception {
+        AuthResponse admin = signUp("admin@example.dk");
+        when(mlServiceClient.retrain()).thenReturn(TestFixtures.modelInfo());
+
+        mockMvc.perform(post("/api/retrain-model").header("Authorization", BEARER + admin.token()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.modelName").value("RandomForestClassifier"));
 
-        verify(mlServiceClient).retrain();
+        mockMvc.perform(post("/api/retrain-model").header("Authorization", BEARER + admin.token()))
+                .andExpect(status().isTooManyRequests());
+
+        verify(mlServiceClient, times(1)).retrain();
     }
 
     @Test

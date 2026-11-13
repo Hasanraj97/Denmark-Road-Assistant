@@ -1,6 +1,18 @@
+# ML service runtime dependencies.
+#
+# Works on Python 3.11, 3.12, 3.13 and 3.14. Every pin below ships a ready-made
+# Windows/macOS/Linux wheel for all four, so nothing is ever compiled from source.
+#
+# These were bumped from numpy 2.3.2 / pandas 2.3.2 / scikit-learn 1.7.1 /
+# joblib 1.5.2, which predate Python 3.14 and have no 3.14 wheels - installing
+# them on 3.14 tries to compile C code and fails. The new pins are PATCH
+# releases of the same versions. Verified before switching: the regenerated
+# dataset is byte-identical to the committed CSV, and the retrained model has
+# the same accuracy (0.8546), confusion matrix, per-class scores and feature
+# importances as the one documented in MODEL_EVALUATION.md.
 fastapi==0.116.1
 uvicorn==0.35.0
-scikit-learn==1.7.1
-pandas==2.3.2
-numpy==2.3.2
-joblib==1.5.2
+scikit-learn==1.7.2
+pandas==2.3.3
+numpy==2.3.5
+joblib==1.5.3

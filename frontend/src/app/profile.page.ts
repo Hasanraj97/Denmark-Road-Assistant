@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { AuthService } from './auth.service';
@@ -15,6 +16,9 @@ import { describeError } from './error-message';
 export class ProfilePageComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  protected readonly confirmingDelete = signal(false);
+  protected readonly deleting = signal(false);
 
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
@@ -25,8 +29,8 @@ export class ProfilePageComponent implements OnInit, OnDestroy {
   protected readonly form = this.fb.nonNullable.group({
     fullName: ['', [Validators.required, Validators.maxLength(120)]],
     email: ['', [Validators.required, Validators.email]],
-    phone: ['', [Validators.required, Validators.maxLength(40)]],
-    address: ['', [Validators.required, Validators.maxLength(255)]]
+    phone: ['', [Validators.maxLength(40)]],
+    address: ['', [Validators.maxLength(255)]]
   });
 
   private readonly subscriptions = new Subscription();
@@ -38,8 +42,8 @@ export class ProfilePageComponent implements OnInit, OnDestroy {
           this.form.patchValue({
             fullName: user.fullName,
             email: user.email,
-            phone: user.phone,
-            address: user.address
+            phone: user.phone ?? '',
+            address: user.address ?? ''
           });
           this.loading.set(false);
         },
@@ -74,8 +78,8 @@ export class ProfilePageComponent implements OnInit, OnDestroy {
           this.form.patchValue({
             fullName: response.user.fullName,
             email: response.user.email,
-            phone: response.user.phone,
-            address: response.user.address
+            phone: response.user.phone ?? '',
+            address: response.user.address ?? ''
           });
           this.successMessage.set('Profile updated successfully.');
           this.saving.set(false);
@@ -83,6 +87,42 @@ export class ProfilePageComponent implements OnInit, OnDestroy {
         error: (error: unknown) => {
           this.saving.set(false);
           this.errorMessage.set(describeError(error, 'Profile update failed.'));
+        }
+      })
+    );
+  }
+
+  /** Saves everything stored about this account as a JSON file. */
+  protected downloadMyData(): void {
+    this.errorMessage.set('');
+    this.subscriptions.add(
+      this.authService.exportMyData().subscribe({
+        next: (data) => {
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'denmark-road-assistant-my-data.json';
+          link.click();
+          URL.revokeObjectURL(link.href);
+          this.successMessage.set('Your data was downloaded.');
+        },
+        error: (error: unknown) => this.errorMessage.set(describeError(error, 'Your data could not be downloaded.'))
+      })
+    );
+  }
+
+  /** Deletes the account and every saved analysis, after a second click. */
+  protected deleteAccount(): void {
+    this.deleting.set(true);
+    this.subscriptions.add(
+      this.authService.deleteAccount().subscribe({
+        next: () => {
+          this.deleting.set(false);
+          void this.router.navigate(['/analysis']);
+        },
+        error: (error: unknown) => {
+          this.deleting.set(false);
+          this.errorMessage.set(describeError(error, 'The account could not be deleted.'));
         }
       })
     );

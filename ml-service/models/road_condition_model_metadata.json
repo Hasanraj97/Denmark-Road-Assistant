@@ -115,5 +115,6 @@
     "random_state": 42
   },
   "training_seed": 42,
-  "synthetic_disclaimer": "The weather in this advisory is a real Open-Meteo forecast. The road-condition grade comes from a model trained on generated data, so treat it as an illustration of the method rather than a measurement of Danish roads."
+  "synthetic_disclaimer": "The weather in this advisory is a real Open-Meteo forecast. The road-condition grade comes from a model trained on generated data, so treat it as an illustration of the method rather than a measurement of Danish roads.",
+  "model_sha256": "c004a8bab23b52da15e1c803b34f666b231a41eac57015cd48e333dc8cabcf50"
 }

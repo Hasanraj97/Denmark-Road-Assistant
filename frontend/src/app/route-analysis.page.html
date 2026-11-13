@@ -158,14 +158,6 @@
           } @else {
             <div class="ra-stat"><span>Model</span><strong>loading&hellip;</strong></div>
           }
-
-          @if (isLoggedIn()) {
-            <button type="button" class="ra-retrain" [disabled]="retraining()" (click)="retrainModel()">
-              {{ retraining() ? 'Retraining…' : 'Retrain model' }}
-            </button>
-          } @else {
-            <span class="ra-retrain-hint">Log in to retrain</span>
-          }
         </div>
       </section>
 
@@ -176,7 +168,7 @@
           @if (analysis(); as result) {
             <div class="map-overlay">
               <span>Route:</span>
-              <strong>{{ result.route.distanceKm }} km</strong>
+              <strong>{{ result.route.distanceKm | number: '1.0-1' }} km</strong>
             </div>
           }
         </div>
@@ -252,27 +244,43 @@
           <article class="mini-card">
             <h2>What Shaped This Advisory</h2>
             <p class="mini-card-intro">
-              The route factors the road-condition model relied on most. The weather values here are the real
-              Open-Meteo forecast; the grade they produce is modelled.
+              The factors the road-condition model relied on most for this trip come first.
+              @if (analysis()?.weather?.source === 'open-meteo') {
+                The weather values are the real Open-Meteo forecast; the grade they produce is modelled.
+              } @else {
+                Live weather was not available, so a seasonal average stands in; the grade is modelled.
+              }
             </p>
 
             @if (routeState() === 'loading') {
               <p class="empty-text">Finding the route and grading its road conditions...</p>
             } @else if (analysis()) {
-              <div class="inputs-list compact-inputs-list">
-                @for (feature of predictionInputs(); track feature.label) {
-                  <div class="input-item">
-                    <span>{{ feature.label }}</span>
-                    <strong>{{ feature.value }}</strong>
-                    <small>{{ feature.help }}</small>
-                  </div>
-                }
-
+              <div class="inputs-list compact-inputs-list" tabindex="0" role="region" aria-label="What shaped this advisory">
                 @for (influence of influentialFeatures(); track influence.feature) {
                   <div class="input-item">
                     <span>{{ formatFeatureName(influence.feature) }}</span>
                     <strong>{{ influence.value }}</strong>
                     <small>{{ influence.impact }}</small>
+                  </div>
+                }
+
+                @if (counterFeatures().length) {
+                  <p class="inputs-subhead">Pulling the other way</p>
+                  @for (influence of counterFeatures(); track influence.feature) {
+                    <div class="input-item counter-item">
+                      <span>{{ formatFeatureName(influence.feature) }}</span>
+                      <strong>{{ influence.value }}</strong>
+                      <small>{{ influence.impact }}</small>
+                    </div>
+                  }
+                }
+
+                <p class="inputs-subhead">Key inputs</p>
+                @for (feature of predictionInputs(); track feature.label) {
+                  <div class="input-item">
+                    <span>{{ feature.label }}</span>
+                    <strong>{{ feature.value }}</strong>
+                    <small>{{ feature.help }}</small>
                   </div>
                 }
               </div>
@@ -288,7 +296,7 @@
         <h2>Directions</h2>
 
         @if (navSteps().length) {
-          <ol class="nav-steps">
+          <ol class="nav-steps" tabindex="0" aria-label="Turn-by-turn directions">
             @for (step of navSteps(); track $index) {
               <li
                 class="nav-step"
@@ -306,7 +314,7 @@
       </section>
 
       <section class="card ra-card">
-        <p class="weather-eyebrow">HOW SURE THE MODEL IS</p>
+        <p class="weather-eyebrow">MODEL SCORES, NOT MEASURED PROBABILITIES</p>
         <h2>Grade Probabilities</h2>
 
         @if (analysis()) {
@@ -322,11 +330,11 @@
             }
           </ul>
           <p class="incident-note">
-            The model spreads its confidence across all five grades. A close split between
+            The model spreads its score across all five grades. A close split between
             two neighbouring grades means the route sits near a boundary.
           </p>
         } @else {
-          <p class="empty-text">Analyze a route to see how the model split its confidence.</p>
+          <p class="empty-text">Analyze a route to see how the model split its score.</p>
         }
       </section>
 
@@ -379,11 +387,11 @@
             </div>
             <div>
               <span>Distance</span>
-              <strong>{{ result.route.distanceKm }} km</strong>
+              <strong>{{ result.route.distanceKm | number: '1.0-1' }} km</strong>
             </div>
             <div>
               <span>Approx</span>
-              <strong>{{ result.route.durationMinutes }} min</strong>
+              <strong>{{ result.route.durationMinutes | number: '1.0-0' }} min</strong>
             </div>
           </div>
         } @else if (routeState() === 'failed') {
@@ -425,8 +433,10 @@
             <p class="incident-note">
               Real events published by the Danish Road Directorate, matched to your route
               within 150 m and filtered to those still running at your departure time.
-              <strong>These are shown for information only</strong> &mdash; the
-              road-condition grade above does not use them.
+              This is a snapshot of what is reported now, not a forecast: events can end
+              early and new ones can appear before you leave.
+              <strong>They are shown for information only.</strong> The road-condition
+              grade above does not use them.
             </p>
           } @else {
             <p class="empty-text">
@@ -470,8 +480,8 @@
           <h2>Travel Advisory</h2>
 
           @if (analysis(); as result) {
-            <div class="confidence-chip">
-              &#8593; {{ confidencePercent(result.prediction.confidence) }}%
+            <div class="confidence-chip" title="How strongly the model favours this grade. It is the model's own score, not a measured probability.">
+              Model score {{ confidencePercent(result.prediction.confidence) }}%
             </div>
           }
         </div>
@@ -483,7 +493,6 @@
             <span class="condition-pill" [ngClass]="conditionClass(result.prediction.roadConditionLabel)">
               {{ result.prediction.roadConditionLabel }}
             </span>
-            <span class="confidence-pill">Confidence</span>
             @if (result.syntheticModel) {
               <span class="model-pill" title="Grade produced by a model trained on generated data">
                 Modelled grade
@@ -493,7 +502,7 @@
 
           <h3>
             @if (result.prediction.leaveEarlyMinutes > 0) {
-              Leave around {{ result.prediction.leaveEarlyMinutes }} minutes early
+              Rough buffer: leave about {{ result.prediction.leaveEarlyMinutes }} minutes early
             } @else {
               No need to leave early right now
             }

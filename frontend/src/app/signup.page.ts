@@ -24,8 +24,8 @@ export class SignupPageComponent implements OnDestroy {
   protected readonly form = this.fb.nonNullable.group({
     fullName: ['', [Validators.required, Validators.maxLength(120)]],
     email: ['', [Validators.required, Validators.email]],
-    phone: ['', [Validators.required, Validators.maxLength(40)]],
-    address: ['', [Validators.required, Validators.maxLength(255)]],
+    phone: ['', [Validators.maxLength(40)]],
+    address: ['', [Validators.maxLength(255)]],
     password: ['', [Validators.required, Validators.minLength(8)]]
   });
 

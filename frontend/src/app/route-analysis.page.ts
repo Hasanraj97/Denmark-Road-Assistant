@@ -78,6 +78,8 @@ interface Prediction {
   leaveEarlyMinutes: number;
   advisory: string;
   influentialFeatures: FeatureInfluence[];
+  /** Factors that make the predicted grade less likely. Older backends omit it. */
+  counterFeatures?: FeatureInfluence[] | null;
   classProbabilities: Record<string, number>;
   features: RouteFeatures;
   syntheticPrediction: boolean;
@@ -218,7 +220,6 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
   protected readonly latestDepartureDate = signal(RouteAnalysisPageComponent.isoDate(6));
   protected readonly loadingMap = signal(true);
   protected readonly analyzing = signal(false);
-  protected readonly retraining = signal(false);
   protected readonly locating = signal(false);
 
   // Each part of the page reports its own state. They used to share a single
@@ -380,27 +381,6 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
       this.reportAnalysisFailure(error);
     } finally {
       this.analyzing.set(false);
-    }
-  }
-
-  protected async retrainModel(): Promise<void> {
-    this.retraining.set(true);
-    this.modelState.set('loading');
-    this.modelError.set('');
-
-    try {
-      await this.backendUrlService.ensureConnected();
-      const info = await firstValueFrom(
-        this.http.post<ModelInfo>(this.backendUrlService.apiUrl('/retrain-model'), {})
-      );
-      this.modelInfo.set(info);
-      this.modelState.set('ready');
-      this.statusMessage.set('Road-condition model retrained on freshly generated data.');
-    } catch (error) {
-      this.modelState.set('failed');
-      this.modelError.set(describeError(error, 'The road-condition model could not be retrained.'));
-    } finally {
-      this.retraining.set(false);
     }
   }
 
@@ -748,6 +728,10 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
   }
 
   /** The model's own reasons for this grade, with the measured impact of each. */
+  protected counterFeatures(): FeatureInfluence[] {
+    return this.analysis()?.prediction.counterFeatures ?? [];
+  }
+
   protected influentialFeatures(): FeatureInfluence[] {
     return this.analysis()?.prediction.influentialFeatures ?? [];
   }
@@ -775,7 +759,7 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
         label: 'Weather disruption',
         value: features.weatherRisk.toFixed(2),
         meter: Math.round(features.weatherRisk * 100),
-        summary: 'How much the real forecast for your departure hour could slow the drive.'
+        summary: 'How much the forecast weather halfway along the route could slow the drive.'
       },
       {
         label: 'Urban delay potential',
@@ -787,7 +771,7 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
         label: 'Rain outlook',
         value: `${features.rainfallMm.toFixed(1)} mm`,
         meter: Math.min(100, Math.round((features.rainfallMm / 10) * 100)),
-        summary: 'Rainfall in the departure hour, taken from the Open-Meteo forecast.'
+        summary: 'Rainfall halfway along the route, at the hour you are expected to pass it.'
       }
     ];
   }
@@ -812,7 +796,7 @@ export class RouteAnalysisPageComponent implements AfterViewInit, OnDestroy {
       {
         label: 'Weather disruption',
         value: `${Math.round(features.weatherRisk * 100)}%`,
-        help: 'How much the real Open-Meteo forecast for your departure hour could interfere with the trip.'
+        help: 'How much the weather halfway along the route, at the hour you are expected to pass it, could interfere with the trip.'
       }
     ];
   }

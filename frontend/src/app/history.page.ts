@@ -20,6 +20,8 @@ export class HistoryPageComponent implements OnInit, OnDestroy {
   protected readonly errorMessage = signal('');
   protected readonly historyItems = signal<HistoryItem[]>([]);
   protected readonly selectedHistory = signal<HistoryDetail | null>(null);
+  /** The item waiting for a second click to confirm deletion, if any. */
+  protected readonly confirmDeleteId = signal<number | null>(null);
 
   private readonly subscriptions = new Subscription();
 
@@ -70,7 +72,30 @@ export class HistoryPageComponent implements OnInit, OnDestroy {
     );
   }
 
-  protected advisoryPreview(text: string): string {
+  protected deleteItem(id: number): void {
+    this.subscriptions.add(
+      this.historyService.deleteHistory(id).subscribe({
+        next: () => {
+          this.confirmDeleteId.set(null);
+          this.historyItems.update((items) => items.filter((item) => item.id !== id));
+          if (this.selectedHistory()?.id === id) {
+            this.selectedHistory.set(null);
+          }
+        },
+        error: (error: unknown) => this.errorMessage.set(describeError(error, 'The analysis could not be deleted.'))
+      })
+    );
+  }
+
+  /** Turns a model value between 0 and 1 into a word a driver can read. */
+  protected levelWord(value: number | null | undefined): string {
+    if (value === null || value === undefined) {
+      return 'Unknown';
+    }
+    return value < 0.34 ? 'Low' : value < 0.67 ? 'Medium' : 'High';
+  }
+
+    protected advisoryPreview(text: string): string {
     return text.length > 160 ? `${text.slice(0, 157)}...` : text;
   }
 
